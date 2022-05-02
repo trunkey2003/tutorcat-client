@@ -544,7 +544,7 @@ export default function LiveRoom({ roomID }) {
   const MyCallScreenState = () => {
     if (myCallScreenOff == true)
       return (
-        <div className="fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
+        <div className="z-10 fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
           Your camera is off
         </div>
       );
@@ -583,7 +583,7 @@ export default function LiveRoom({ roomID }) {
         <RemoteCallScreenState />
         <video
           ref={myVideo}
-          className="fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-blue-100 object-cover border-2 border-cyan-200"
+          className="z-10 fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-blue-100 object-cover border-2 border-cyan-200"
         ></video>
         <MyCallScreenState />
         <div className="fixed z-40 flex items-center justify-center w-[33.33333vw] left-[33.333333vw] bottom-[20px]">
