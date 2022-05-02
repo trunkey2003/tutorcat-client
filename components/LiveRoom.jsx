@@ -54,57 +54,57 @@ export default function LiveRoom({ roomID }) {
   }
 
   useEffect(() => {
-    // setLoading(true);
-    // socket.on("me", (socketID) => {
-    //   Axios.put(`/api/room/join/${roomID}/${socketID}`)
-    //     .then(({ data }) => {
-    //       created = data.userCount == 1 ? false : true;
-    //       if (!created) {
-    //         handleCreateRoom();
-    //         socket.emit("create room", roomID);
-    //         socket.on("end call", () => {
-    //           myMediaConnection.current?.close();
-    //           remoteVideo.current.srcObject = null;
-    //           setRemoteCallScreenOff(null);
-    //         });
-    //         socket.on("join room", () => {
-    //           setRemoteCallScreenOff(true);
-    //         });
-    //       } else {
-    //         handleJoinRoom();
-    //         socket.emit("join room", roomID);
-    //         socket.on("end call", () => {
-    //           myMediaConnection.current?.close();
-    //           remoteVideo.current.srcObject = null;
-    //           setRemoteCallScreenOff(null);
-    //         });
-    //       }
+    setLoading(true);
+    socket.on("me", (socketID) => {
+      Axios.put(`/api/room/join/${roomID}/${socketID}`)
+        .then(({ data }) => {
+          created = data.userCount == 1 ? false : true;
+          if (!created) {
+            handleCreateRoom();
+            socket.emit("create room", roomID);
+            socket.on("end call", () => {
+              myMediaConnection.current?.close();
+              remoteVideo.current.srcObject = null;
+              setRemoteCallScreenOff(null);
+            });
+            socket.on("join room", () => {
+              setRemoteCallScreenOff(true);
+            });
+          } else {
+            handleJoinRoom();
+            socket.emit("join room", roomID);
+            socket.on("end call", () => {
+              myMediaConnection.current?.close();
+              remoteVideo.current.srcObject = null;
+              setRemoteCallScreenOff(null);
+            });
+          }
 
-    //       socket.on("remote turn webcam off", () => {
-    //         setRemoteCallScreenOff(true);
-    //         handleRemoteCallScreen(null);
-    //       });
+          socket.on("remote turn webcam off", () => {
+            setRemoteCallScreenOff(true);
+            handleRemoteCallScreen(null);
+          });
 
-    //       socket.on("remote turn webcam on", () => {
-    //         setRemoteCallScreenOff(false);
-    //       });
+          socket.on("remote turn webcam on", () => {
+            setRemoteCallScreenOff(false);
+          });
 
-    //       socket.on("remote start share screen", () => {
-    //         setRemoteCallScreenOff(false);
-    //       });
+          socket.on("remote start share screen", () => {
+            setRemoteCallScreenOff(false);
+          });
 
-    //       socket.on("remote stop share screen", () => {
-    //         setRemoteCallScreenOff(true);
-    //         handleRemoteCallScreen(null);
-    //       });
+          socket.on("remote stop share screen", () => {
+            setRemoteCallScreenOff(true);
+            handleRemoteCallScreen(null);
+          });
 
-    //       setLoading(false);
-    //     })
-    //     .catch((err) => {
-    //       setError(true);
-    //       setLoading(false);
-    //     });
-    // });
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError(true);
+          setLoading(false);
+        });
+    });
   }, []);
 
   const handleStartShareScreen = () => {
