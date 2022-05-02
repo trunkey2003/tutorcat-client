@@ -3,19 +3,21 @@ import Peer from "peerjs";
 import { io } from "socket.io-client";
 import Loading from "./Loading";
 import { Axios } from "../config/axios";
+import Error from "./Error";
+import Cookies from "universal-cookie";
 
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/room`);
+var created;
 
-export default function LiveRoom({ roomID, created }) {
+export default function LiveRoom({ roomID }) {
   const [shareAudio, setShareAudio] = useState(true);
   const [shareCam, setShareCam] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [remoteCallScreenOff, setRemoteCallScreenOff] = useState(null);
   const [myCallScreenOff, setMyCallScreenOff] = useState(true);
+  const [error, setError] = useState(false);
 
-  const myPeerID = useRef();
-  const remotePeerID = useRef();
   const myCallTrack = useRef();
   const myCallStream = useRef();
   const myWebcamStream = useRef();
@@ -25,45 +27,84 @@ export default function LiveRoom({ roomID, created }) {
   const myVideo = useRef();
   const remoteVideo = useRef();
 
-  useEffect(() => {
-    if (!created) {
-      handleCreateRoom();
-      socket.emit("create room", roomID);
-      socket.on("end call", () => {
-        myMediaConnection.current?.close();
-        remoteVideo.current.srcObject = null;
-        setRemoteCallScreenOff(null);
-      });
-      socket.on("join room", () => {
-        setRemoteCallScreenOff(true);
-      });
-    } else {
-      handleJoinRoom();
-      socket.emit("join room", roomID);
-      socket.on("end call", () => {
-        myMediaConnection.current?.close();
-        remoteVideo.current.srcObject = null;
-        setRemoteCallScreenOff(null);
-      });
+  const setCookieRoom = (key, value) => {
+    const cookies = new Cookies();
+    cookies.set(key, value, { path: "/live" });
+  };
+
+  const removeCookieRoom = (key) => {
+    const cookies = new Cookies();
+    cookies.remove(key, { path: "/live" });
+  };
+
+  function getCookieRoom(key) {
+    let name = key + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(";");
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) == " ") {
+        c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+        return c.substring(name.length, c.length);
+      }
     }
+    return "";
+  }
 
-    socket.on("remote turn webcam off", () => {
-      setRemoteCallScreenOff(true);
-      handleRemoteCallScreen(null);
-    });
+  useEffect(() => {
+    // setLoading(true);
+    // socket.on("me", (socketID) => {
+    //   Axios.put(`/api/room/join/${roomID}/${socketID}`)
+    //     .then(({ data }) => {
+    //       created = data.userCount == 1 ? false : true;
+    //       if (!created) {
+    //         handleCreateRoom();
+    //         socket.emit("create room", roomID);
+    //         socket.on("end call", () => {
+    //           myMediaConnection.current?.close();
+    //           remoteVideo.current.srcObject = null;
+    //           setRemoteCallScreenOff(null);
+    //         });
+    //         socket.on("join room", () => {
+    //           setRemoteCallScreenOff(true);
+    //         });
+    //       } else {
+    //         handleJoinRoom();
+    //         socket.emit("join room", roomID);
+    //         socket.on("end call", () => {
+    //           myMediaConnection.current?.close();
+    //           remoteVideo.current.srcObject = null;
+    //           setRemoteCallScreenOff(null);
+    //         });
+    //       }
 
-    socket.on("remote turn webcam on", () => {
-      setRemoteCallScreenOff(false);
-    });
+    //       socket.on("remote turn webcam off", () => {
+    //         setRemoteCallScreenOff(true);
+    //         handleRemoteCallScreen(null);
+    //       });
 
-    socket.on("remote start share screen", () => {
-      setRemoteCallScreenOff(false);
-    });
+    //       socket.on("remote turn webcam on", () => {
+    //         setRemoteCallScreenOff(false);
+    //       });
 
-    socket.on("remote stop share screen", () => {
-      setRemoteCallScreenOff(true);
-      handleRemoteCallScreen(null);
-    })
+    //       socket.on("remote start share screen", () => {
+    //         setRemoteCallScreenOff(false);
+    //       });
+
+    //       socket.on("remote stop share screen", () => {
+    //         setRemoteCallScreenOff(true);
+    //         handleRemoteCallScreen(null);
+    //       });
+
+    //       setLoading(false);
+    //     })
+    //     .catch((err) => {
+    //       setError(true);
+    //       setLoading(false);
+    //     });
+    // });
   }, []);
 
   const handleStartShareScreen = () => {
@@ -137,11 +178,13 @@ export default function LiveRoom({ roomID, created }) {
 
   const handleUnShareAudio = () => {
     if (sharingScreen) {
-      myWebcamStream.current?.getTracks().forEach((track) => {if (track.kind != 'video') track.stop()});
+      myWebcamStream.current?.getTracks().forEach((track) => {
+        if (track.kind != "video") track.stop();
+      });
       setShareAudio(false);
       return;
     }
-    
+
     myWebcamStream.current?.getTracks().forEach((track) => {
       if (track != myCallTrack.current) track.stop();
     });
@@ -230,9 +273,10 @@ export default function LiveRoom({ roomID, created }) {
           socket.emit("end call", roomID);
           window.location.href = window.location.origin + "/live";
         })
-        .catch(() => { })
+        .catch(() => {})
         .finally(() => {
           setLoading(false);
+          window.location.href = window.location.origin + "/live";
         });
     }
     socket.emit("end call", roomID);
@@ -314,6 +358,7 @@ export default function LiveRoom({ roomID, created }) {
         { video: false, audio: true },
         (stream) => {
           handleMyCallScreen(stream);
+          myCallStream.current = stream;
           myWebcamStream.current = stream;
         },
         (err) => {
@@ -347,15 +392,22 @@ export default function LiveRoom({ roomID, created }) {
     myPeer.current = new Peer("joiner-" + roomID); //tạo ID người vào là joiner-[roomID]
 
     myPeer.current.on("open", (id) => {
+      console.log("opeennnnnnnnnn");
       navigator.getUserMedia(
         { video: false, audio: true },
         (stream) => {
           handleMyCallScreen(stream);
           myWebcamStream.current = stream;
           const call = myPeer.current.call(roomID, stream);
+          
           call.on("stream", (stream) => {
-            console.log(stream.getTracks());
+            console.log("Streammm");
             handleRemoteCallScreen(stream);
+            if (stream.getTracks()[stream.getTracks().length - 1].kind == 'video'){
+              setRemoteCallScreenOff(false);
+            } else{
+              setRemoteCallScreenOff(true);
+            }
           });
           call.on("close", () => {
             console.log("close stream");
@@ -386,11 +438,11 @@ export default function LiveRoom({ roomID, created }) {
     return (
       <div
         onClick={handleUnShareAudio}
-        className="mb-4 w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-400 hover:bg-red-500 hover:cursor-pointer"
+        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-blue-500 hover:bg-blue-600 hover:cursor-pointer mx-4"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="w-8 h-8 fill-black"
+          className="w-8 h-8 fill-white"
           viewBox="0 0 384 512"
         >
           <path d="M192 352c53.03 0 96-42.97 96-96v-160c0-53.03-42.97-96-96-96s-96 42.97-96 96v160C96 309 138.1 352 192 352zM344 192C330.7 192 320 202.7 320 215.1V256c0 73.33-61.97 132.4-136.3 127.7c-66.08-4.169-119.7-66.59-119.7-132.8L64 215.1C64 202.7 53.25 192 40 192S16 202.7 16 215.1v32.15c0 89.66 63.97 169.6 152 181.7V464H128c-18.19 0-32.84 15.18-31.96 33.57C96.43 505.8 103.8 512 112 512h160c8.222 0 15.57-6.216 15.96-14.43C288.8 479.2 274.2 464 256 464h-40v-33.77C301.7 418.5 368 344.9 368 256V215.1C368 202.7 357.3 192 344 192z" />
@@ -403,11 +455,11 @@ export default function LiveRoom({ roomID, created }) {
     return (
       <div
         onClick={handleShareAudio}
-        className="mb-4 w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-400 hover:bg-red-500 hover:cursor-pointer"
+        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-blue-500 hover:bg-blue-600 hover:cursor-pointer mx-4"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="w-8 h-8 fill-black"
+          className="w-8 h-8 fill-white"
           viewBox="0 0 640 512"
         >
           <path d="M383.1 464l-39.1-.0001v-33.77c20.6-2.824 39.98-9.402 57.69-18.72l-43.26-33.91c-14.66 4.65-30.28 7.179-46.68 6.144C245.7 379.6 191.1 317.1 191.1 250.9V247.2L143.1 209.5l.0001 38.61c0 89.65 63.97 169.6 151.1 181.7v34.15l-40 .0001c-17.67 0-31.1 14.33-31.1 31.1C223.1 504.8 231.2 512 239.1 512h159.1c8.838 0 15.1-7.164 15.1-15.1C415.1 478.3 401.7 464 383.1 464zM630.8 469.1l-159.3-124.9c15.37-25.94 24.53-55.91 24.53-88.21V216c0-13.25-10.75-24-23.1-24c-13.25 0-24 10.75-24 24l-.0001 39.1c0 21.12-5.559 40.77-14.77 58.24l-25.72-20.16c5.234-11.68 8.493-24.42 8.493-38.08l-.001-155.1c0-52.57-40.52-98.41-93.07-99.97c-54.37-1.617-98.93 41.95-98.93 95.95l0 54.25L38.81 5.111C34.41 1.673 29.19 0 24.03 0C16.91 0 9.839 3.158 5.12 9.189c-8.187 10.44-6.37 25.53 4.068 33.7l591.1 463.1c10.5 8.203 25.57 6.328 33.69-4.078C643.1 492.4 641.2 477.3 630.8 469.1z" />
@@ -417,16 +469,16 @@ export default function LiveRoom({ roomID, created }) {
   };
 
   const StopShareWebcamButton = () => {
-    if (sharingScreen) return <StartShareWebcamButton/>
+    if (sharingScreen) return <StartShareWebcamButton />;
     return (
       <div
         onClick={handleStopWebcam}
-        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-400 hover:bg-red-500 hover:cursor-pointer"
+        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-cyan-500 hover:bg-cyan-600 hover:cursor-pointer mx-4"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 576 512"
-          className="w-8 h-8 fill-black"
+          className="w-8 h-8 fill-white"
         >
           <path d="M384 112v288c0 26.51-21.49 48-48 48h-288c-26.51 0-48-21.49-48-48v-288c0-26.51 21.49-48 48-48h288C362.5 64 384 85.49 384 112zM576 127.5v256.9c0 25.5-29.17 40.39-50.39 25.79L416 334.7V177.3l109.6-75.56C546.9 87.13 576 102.1 576 127.5z" />
         </svg>
@@ -438,12 +490,12 @@ export default function LiveRoom({ roomID, created }) {
     return (
       <div
         onClick={handleStartWebcam}
-        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-400 hover:bg-red-500 hover:cursor-pointer"
+        className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-cyan-500 hover:bg-cyan-600 hover:cursor-pointer mx-4"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 640 512"
-          className="w-8 h-8 fill-black"
+          className="w-8 h-8 fill-white"
         >
           <path d="M32 399.1c0 26.51 21.49 47.1 47.1 47.1h287.1c19.57 0 36.34-11.75 43.81-28.56L32 121.8L32 399.1zM630.8 469.1l-89.21-69.92l15.99 11.02c21.22 14.59 50.41-.2971 50.41-25.8V127.5c0-25.41-29.07-40.37-50.39-25.76l-109.6 75.56l.0001 148.5l-32-25.08l.0001-188.7c0-26.51-21.49-47.1-47.1-47.1H113.9L38.81 5.111C34.41 1.673 29.19 0 24.03 0C16.91 0 9.84 3.158 5.121 9.189C-3.066 19.63-1.249 34.72 9.189 42.89l591.1 463.1c10.5 8.203 25.57 6.328 33.69-4.078C643.1 492.4 641.2 477.3 630.8 469.1z" />
         </svg>
@@ -454,12 +506,14 @@ export default function LiveRoom({ roomID, created }) {
   const StartShareScreenButton = () => {
     return (
       <div className="text-center">
-        <button
+        <div
           onClick={handleStartShareScreen}
-          className="px-5 py-1 text-lg rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-800 mx-auto mb-4"
+          className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-sky-600 hover:bg-sky-700 hover:cursor-pointer mx-4"
         >
-          Share Screen
-        </button>
+          <svg className="w-8 h-8 fill-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z"/>
+          </svg>
+        </div>
       </div>
     );
   };
@@ -469,9 +523,11 @@ export default function LiveRoom({ roomID, created }) {
       <div className="text-center">
         <button
           onClick={handleStopShareScreen}
-          className="animate-pulse px-5 py-1 text-lg rounded bg-cyan-600 text-white font-semibold hover:bg-cyan-800 mx-auto mb-4"
+          className="animate-pulse w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-sky-600 hover:bg-sky-700 hover:cursor-pointer mx-4"
         >
-          Sharing...
+          <svg className="w-8 h-8 fill-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
+            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z"/>
+          </svg>
         </button>
       </div>
     );
@@ -480,7 +536,7 @@ export default function LiveRoom({ roomID, created }) {
   const MyCallScreenState = () => {
     if (myCallScreenOff == true)
       return (
-        <div className="absolute w-[40%] h-[22.5vw] right-[5%] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
+        <div className="fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
           Your camera is off
         </div>
       );
@@ -492,40 +548,34 @@ export default function LiveRoom({ roomID, created }) {
   const RemoteCallScreenState = () => {
     if (remoteCallScreenOff == true)
       return (
-        <div className="absolute w-[40%] h-[22.5vw] left-[5%] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
+        <div className="fixed top-0 left-0 w-full h-screen bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
           Remote camera is off
         </div>
       );
     if (remoteCallScreenOff == null)
       return (
-        <div className="absolute w-[40%] h-[22.5vw] left-[5%] animate-pulse bg-gray-200 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
+        <div className="fixed top-0 left-0 w-full h-screen animate-pulse bg-gray-200 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
           Waiting another user to join...
         </div>
       );
     if (remoteCallScreenOff == false) return "";
   };
 
+  if (error) return <Error />;
+
   return (
     <>
       {loading ? <Loading /> : ""}
-      <nav className="py-3 bg-sky-300 flex">
-        <img
-          src="https://pa1.narvii.com/7485/82dee57ea30576fccaf5d1fc33eee30e1acd09cbr1-500-450_hq.gif"
-          className="w-[60px] h-[60px] ml-[10vw] mr-4 rounded-full"
-        ></img>
-        <div className="font-bold text-2xl text-white leading-[60px]">Cat Tutor</div>
-      </nav>
-
       <p id="notification" hidden></p>
       <div className="relative h-[22.5vw] mt-[50px] w-full">
         <video
           ref={remoteVideo}
-          className="absolute w-[40%] h-[22.5vw] left-[5%] bg-gray-300 object-cover border-2 border-cyan-200"
+          className="fixed top-0 left-0 w-full h-screen bg-gray-300 object-cover border-2 border-cyan-200"
         ></video>
         <RemoteCallScreenState />
         <video
           ref={myVideo}
-          className="absolute w-[40%] h-[22.5vw] right-[5%] bg-blue-100 object-cover border-2 border-cyan-200"
+          className="fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-blue-100 object-cover border-2 border-cyan-200"
         ></video>
         <MyCallScreenState />
         <div className="text-center">
@@ -536,9 +586,11 @@ export default function LiveRoom({ roomID, created }) {
             End Call
           </button>
         </div>
+        <div className="fixed z-40 flex items-center justify-center w-[33.33333vw] left-[33.333333vw] bottom-[20px]">
         {sharingScreen ? <StopShareScreenButton /> : <StartShareScreenButton />}
         {shareAudio ? <MuteButton /> : <UnmuteButton />}
         {shareCam ? <StopShareWebcamButton /> : <StartShareWebcamButton />}
+        </div>
       </div>
     </>
   );

@@ -2,4 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Tapestry&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
 
+
+.bg-radient-sky{
+    background: rgb(18,101,116);
+    background: linear-gradient(38deg, rgba(18,101,116,1) 0%, rgba(218,242,241,1) 100%);
+}
