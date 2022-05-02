@@ -124,7 +124,7 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              You can call privately, and other people won't see your identity. But your activity
+              You can call privately, and other people won${`'`}t see your identity. But your activity
               might still be visible to us
             </p>
           </div>
@@ -143,7 +143,7 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              We don't require account to use LiveTutor platform, but your space will be limited
+              We don${`'`}t require account to use LiveTutor platform, but your space will be limited
             </p>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              We don't record your video for any purpose, and your history call will just only
+              We don${`'`}t record your video for any purpose, and your history call will just only
               visible to you and your caller
             </p>
           </div>
@@ -436,7 +436,7 @@ export default function Index() {
               </div>
 
               <div className="text-lg text-center mt-5 mb-12">
-                Everything is ready, it's up to you from now on
+                Everything is ready, it${`'`}s up to you from now on
               </div>
               <div
                 onClick={handleCreateRoom}
