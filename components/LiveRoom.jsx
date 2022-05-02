@@ -399,13 +399,13 @@ export default function LiveRoom({ roomID }) {
           handleMyCallScreen(stream);
           myWebcamStream.current = stream;
           const call = myPeer.current.call(roomID, stream);
-          
+
           call.on("stream", (stream) => {
             console.log("Streammm");
             handleRemoteCallScreen(stream);
-            if (stream.getTracks()[stream.getTracks().length - 1].kind == 'video'){
+            if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
               setRemoteCallScreenOff(false);
-            } else{
+            } else {
               setRemoteCallScreenOff(true);
             }
           });
@@ -510,8 +510,12 @@ export default function LiveRoom({ roomID }) {
           onClick={handleStartShareScreen}
           className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-sky-600 hover:bg-sky-700 hover:cursor-pointer mx-4"
         >
-          <svg className="w-8 h-8 fill-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z"/>
+          <svg
+            className="w-8 h-8 fill-white"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 576 512"
+          >
+            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z" />
           </svg>
         </div>
       </div>
@@ -525,8 +529,12 @@ export default function LiveRoom({ roomID }) {
           onClick={handleStopShareScreen}
           className="animate-pulse w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-sky-600 hover:bg-sky-700 hover:cursor-pointer mx-4"
         >
-          <svg className="w-8 h-8 fill-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512">
-            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z"/>
+          <svg
+            className="w-8 h-8 fill-white"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 576 512"
+          >
+            <path d="M528 0h-480C21.5 0 0 21.5 0 48v320C0 394.5 21.5 416 48 416h192L224 464H152C138.8 464 128 474.8 128 488S138.8 512 152 512h272c13.25 0 24-10.75 24-24s-10.75-24-24-24H352L336 416h192c26.5 0 48-21.5 48-48v-320C576 21.5 554.5 0 528 0zM512 352H64V64h448V352z" />
           </svg>
         </button>
       </div>
@@ -578,18 +586,20 @@ export default function LiveRoom({ roomID }) {
           className="fixed w-[320px] h-[180px] bottom-[15px] right-[15px] bg-blue-100 object-cover border-2 border-cyan-200"
         ></video>
         <MyCallScreenState />
-        <div className="text-center">
-          <button
-            onClick={handleEndCall}
-            className="px-5 py-1 text-lg rounded bg-red-600 text-white font-semibold hover:bg-red-800 mx-auto mb-4"
-          >
-            End Call
-          </button>
-        </div>
         <div className="fixed z-40 flex items-center justify-center w-[33.33333vw] left-[33.333333vw] bottom-[20px]">
-        {sharingScreen ? <StopShareScreenButton /> : <StartShareScreenButton />}
-        {shareAudio ? <MuteButton /> : <UnmuteButton />}
-        {shareCam ? <StopShareWebcamButton /> : <StartShareWebcamButton />}
+          {sharingScreen ? <StopShareScreenButton /> : <StartShareScreenButton />}
+          {shareAudio ? <MuteButton /> : <UnmuteButton />}
+          {shareCam ? <StopShareWebcamButton /> : <StartShareWebcamButton />}
+          <div className="text-center">
+            <div
+              onClick={handleEndCall}
+              className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-500 hover:bg-red-600 hover:cursor-pointer mx-4"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" className="h-7 w-7 fill-white">
+                <path d="M271.1 367.5L227.9 313.7c-8.688-10.78-23.69-14.51-36.47-8.974l-108.5 46.51c-13.91 6-21.49 21.19-18.11 35.79l23.25 100.8C91.32 502 103.8 512 118.5 512c107.4 0 206.1-37.46 284.2-99.65l-88.75-69.56C300.6 351.9 286.6 360.3 271.1 367.5zM630.8 469.1l-159.6-125.1c65.03-78.97 104.7-179.5 104.7-289.5c0-14.66-9.969-27.2-24.22-30.45L451 .8125c-14.69-3.406-29.73 4.213-35.82 18.12l-46.52 108.5c-5.438 12.78-1.771 27.67 8.979 36.45l53.82 44.08C419.2 232.1 403.9 256.2 386.2 277.4L38.81 5.111C34.41 1.673 29.19 0 24.03 0C16.91 0 9.84 3.158 5.121 9.189c-8.188 10.44-6.37 25.53 4.068 33.7l591.1 463.1c10.5 8.203 25.57 6.328 33.69-4.078C643.1 492.4 641.2 477.3 630.8 469.1z"/>
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
     </>
