@@ -4,7 +4,6 @@ import { io } from "socket.io-client";
 import Loading from "./Loading";
 import { Axios } from "../config/axios";
 import Error from "./Error";
-import Cookies from "universal-cookie";
 
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/room`);
 var created;
@@ -27,32 +26,6 @@ export default function LiveRoom({ roomID }) {
   const myVideo = useRef();
   const remoteVideo = useRef();
 
-  const setCookieRoom = (key, value) => {
-    const cookies = new Cookies();
-    cookies.set(key, value, { path: "/live" });
-  };
-
-  const removeCookieRoom = (key) => {
-    const cookies = new Cookies();
-    cookies.remove(key, { path: "/live" });
-  };
-
-  function getCookieRoom(key) {
-    let name = key + "=";
-    let decodedCookie = decodeURIComponent(document.cookie);
-    let ca = decodedCookie.split(";");
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) == " ") {
-        c = c.substring(1);
-      }
-      if (c.indexOf(name) == 0) {
-        return c.substring(name.length, c.length);
-      }
-    }
-    return "";
-  }
-
   useEffect(() => {
     setLoading(true);
     socket.on("me", (socketID) => {
@@ -62,21 +35,29 @@ export default function LiveRoom({ roomID }) {
           if (!created) {
             handleCreateRoom();
             socket.emit("create room", roomID);
-            socket.on("end call", () => {
+            socket.on("someone leave call", () => {
               myMediaConnection.current?.close();
+              myMediaConnection.current = null;
               remoteVideo.current.srcObject = null;
+              //Sẽ clear hết webcam & screen khi người khác out
+              myCallStream.current.getTracks((track) => {if (track.kind == 'video') track.stop();});
+              setMyCallScreenOff(true);
+              setSharingScreen(false);
+              setShareCam(false);
               setRemoteCallScreenOff(null);
             });
-            socket.on("join room", () => {
+            socket.on("someone join room", (id) => {
               setRemoteCallScreenOff(true);
+              console.log(id + " joined room");
             });
           } else {
             handleJoinRoom();
             socket.emit("join room", roomID);
             socket.on("end call", () => {
               myMediaConnection.current?.close();
-              remoteVideo.current.srcObject = null;
-              setRemoteCallScreenOff(null);
+              // remoteVideo.current.srcObject = null;
+              // setRemoteCallScreenOff(null);
+              window.location.href = window.location.origin + '/live';
             });
           }
 
@@ -107,7 +88,25 @@ export default function LiveRoom({ roomID }) {
     });
   }, []);
 
+  const handleMyCallScreen = (stream) => {
+    myVideo.current.srcObject = stream;
+    myVideo.current.muted = true;
+    myVideo.current.play();
+    myCallStream.current = stream;
+  };
+
+  const handleRemoteCallScreen = (stream) => {
+    remoteVideo.current.srcObject = stream;
+    remoteVideo.current.play();
+  };
+
+  const handleEndCall = () => {
+    setLoading(true);
+    window.location.href = window.location.origin + "/live";
+  };
+
   const handleStartShareScreen = () => {
+    if (!myMediaConnection.current) return; 
     navigator.mediaDevices
       .getDisplayMedia({ video: { mediaSource: "screen" }, audio: true })
       .then(async (stream) => {
@@ -125,23 +124,24 @@ export default function LiveRoom({ roomID }) {
           //Luu screen stream de ti hoi ngat ket noi
           myWebcamStream.current = audio;
           myScreenStream.current = finalStream;
-          myCallStream.current = finalStream;
         } else {
           finalStream = stream;
-          myCallStream.current = finalStream;
           myScreenStream.current = finalStream;
         }
 
         setMyCallScreenOff(false);
         handleMyCallScreen(finalStream);
+        myCallStream.current = finalStream;
         setSharingScreen(true);
+
         //Neu ma chua call
-        if (!remoteVideo.current.srcObject) return;
+        if (!remoteVideo.current.srcObject) {
+          return;
+        }
 
         //Neu da call roi
         if (created) myPeer.current.call(roomID, finalStream);
         else myPeer.current.call("joiner-" + roomID, finalStream);
-        setSharingScreen(true);
       });
   };
 
@@ -156,24 +156,20 @@ export default function LiveRoom({ roomID }) {
     }
     navigator.getUserMedia({ video: shareCam, audio: shareAudio }, (stream) => {
       handleMyCallScreen(stream);
+      myCallStream.current = stream;
       myWebcamStream.current = stream;
+
       if (!shareCam) setMyCallScreenOff(true);
+
+      if (!remoteVideo.current.srcObject) {
+        setSharingScreen(false);
+        return;
+      }
+
       if (created) myPeer.current.call(roomID, stream);
       else myPeer.current.call("joiner-" + roomID, stream);
       setSharingScreen(false);
     });
-  };
-
-  const handleMyCallScreen = (stream) => {
-    myVideo.current.srcObject = stream;
-    myVideo.current.muted = true;
-    myVideo.current.play();
-    myCallStream.current = stream;
-  };
-
-  const handleRemoteCallScreen = (stream) => {
-    remoteVideo.current.srcObject = stream;
-    remoteVideo.current.play();
   };
 
   const handleUnShareAudio = () => {
@@ -261,41 +257,20 @@ export default function LiveRoom({ roomID }) {
     // myVideo.current.muted = false;
   };
 
-  const handleEndCall = () => {
-    // console.log(myMediaConnection.current);
-    // myWebcamStream.current?.getTracks().forEach((track) => track.stop());
-    myMediaConnection.current?.close();
-    if (created) window.location.href = window.location.origin + "/live";
-    if (!remoteVideo.current.srcObject) {
-      setLoading(true);
-      Axios.delete(`/api/room/delete/${roomID}`)
-        .then(() => {
-          socket.emit("end call", roomID);
-          window.location.href = window.location.origin + "/live";
-        })
-        .catch(() => {})
-        .finally(() => {
-          setLoading(false);
-          window.location.href = window.location.origin + "/live";
-        });
-    }
-    socket.emit("end call", roomID);
-    // myVideo.current.srcObject = null;
-    // remoteVideo.current.srcObject = null;
-  };
-
   const handleStartWebcam = () => {
+    if (!myMediaConnection.current) return; 
     if (sharingScreen) return;
     myWebcamStream.current?.getTracks().forEach((track) => track.stop());
     navigator.getUserMedia({ video: !shareCam, audio: shareAudio }, (stream) => {
       handleMyCallScreen(stream);
+      myCallStream.current = stream;
       myWebcamStream.current = stream;
       myCallTrack.current = stream.getTracks().filter((track) => track.kind == "video")[0];
       setShareCam(true);
       setMyCallScreenOff(false);
 
       // Nếu chưa có ai vào
-      if (myMediaConnection.current == undefined) {
+      if (!remoteVideo.current.srcObject) {
         return;
       }
 
@@ -316,7 +291,7 @@ export default function LiveRoom({ roomID }) {
       handleMyCallScreen(null);
 
       //Nếu chưa có ai vào
-      if (myMediaConnection.current == undefined) {
+      if (!remoteVideo.current.srcObject) {
         setShareCam(false);
         setMyCallScreenOff(true);
         return;
@@ -354,61 +329,64 @@ export default function LiveRoom({ roomID }) {
     myPeer.current = peer;
 
     peer.on("open", (id) => {
+      console.log("open");
       navigator.getUserMedia(
         { video: false, audio: true },
         (stream) => {
           handleMyCallScreen(stream);
-          myCallStream.current = stream;
           myWebcamStream.current = stream;
+          peer.on("disconnected", () => {
+            console.log("remote disconnected");
+          });
+      
+          peer.on("close", () => {
+            console.log("remote close");
+          });
+      
+          peer.on("call", (call) => {
+            call.answer(myCallStream.current); 
+            call.on("stream", (stream) => {
+              handleRemoteCallScreen(stream);
+              call.on("close", () => {
+                console.log("close call");
+              });
+            });
+            myMediaConnection.current = call;
+            //Send the remote my current video state
+          });
         },
         (err) => {
           console.log(err);
         }
       );
     });
-
-    peer.on("disconnected", () => {
-      console.log("remote disconnected");
-    });
-
-    peer.on("close", () => {
-      console.log("remote close");
-    });
-
-    peer.on("call", (call) => {
-      call.answer(myCallStream.current);
-      call.on("stream", (stream) => {
-        handleRemoteCallScreen(stream);
-        call.on("close", () => {
-          console.log("close call");
-        });
-      });
-      myMediaConnection.current = call;
-      //Send the remote my current video state
-    });
   };
 
   const handleJoinRoom = () => {
+    setRemoteCallScreenOff(true);
     myPeer.current = new Peer("joiner-" + roomID); //tạo ID người vào là joiner-[roomID]
 
     myPeer.current.on("open", (id) => {
-      console.log("opeennnnnnnnnn");
       navigator.getUserMedia(
         { video: false, audio: true },
-        (stream) => {
-          handleMyCallScreen(stream);
-          myWebcamStream.current = stream;
-          const call = myPeer.current.call(roomID, stream);
+        (myStream) => {
+          handleMyCallScreen(myStream);
+          myWebcamStream.current = myStream;
+          myStream.getTracks((track) => {if (track.kind == 'video') track.stop()});
+          const call = myPeer.current.call(roomID, myStream);
 
-          call.on("stream", (stream) => {
-            console.log("Streammm");
-            handleRemoteCallScreen(stream);
-            if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
-              setRemoteCallScreenOff(false);
-            } else {
-              setRemoteCallScreenOff(true);
-            }
+          call.on("stream", (remoteStream) => {
+            console.log(remoteStream.getTracks());
+            handleRemoteCallScreen(remoteStream);
+            // if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
+            //   setRemoteCallScreenOff(false);
+            // } else {
+            //   setRemoteCallScreenOff(true);
+            // }
           });
+
+          // setRemoteCallScreenOff(true);
+
           call.on("close", () => {
             console.log("close stream");
           });
@@ -420,16 +398,24 @@ export default function LiveRoom({ roomID }) {
       );
     });
 
-    //người join room nhận dc sự thay đổi từ người tạo room
+    // người join room nhận dc sự thay đổi từ người tạo room
     myPeer.current.on("call", (call) => {
+      console.log("myPeer.current.onCall");
       call.answer(myWebcamStream.current);
       call.on("stream", (stream) => {
+        console.log("call.onStream");
         handleRemoteCallScreen(stream);
-        call.on("close", () => {
-          console.log("close call");
-        });
+        if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
+          setRemoteCallScreenOff(false);
+        } else {
+          setRemoteCallScreenOff(true);
+        }
       });
 
+      call.on("close", () => {
+        console.log("close call");
+      });
+ 
       myMediaConnection.current = call;
     });
   };
@@ -556,16 +542,19 @@ export default function LiveRoom({ roomID }) {
   const RemoteCallScreenState = () => {
     if (remoteCallScreenOff == true)
       return (
-        <div className="fixed top-0 left-0 w-full h-screen bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
+        <div className="fixed left-[10vw] top-0 w-[80vw] h-[45vw] bg-black object-cover border-2 border-cyan-200 z-10 text-white flex justify-center items-center text-2xl">
           Remote camera is off
         </div>
       );
-    if (remoteCallScreenOff == null)
+    if (remoteCallScreenOff == null && !created)
       return (
-        <div className="fixed top-0 left-0 w-full h-screen animate-pulse bg-gray-200 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
+        <div className="fixed left-[10vw] top-0 w-[80vw] h-[45vw] animate-pulse bg-gray-200 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
           Waiting another user to join...
         </div>
       );
+    if (remoteCallScreenOff == null && created) {
+      return "";
+    }
     if (remoteCallScreenOff == false) return "";
   };
 
@@ -574,11 +563,10 @@ export default function LiveRoom({ roomID }) {
   return (
     <>
       {loading ? <Loading /> : ""}
-      <p id="notification" hidden></p>
-      <div className="relative h-[22.5vw] mt-[50px] w-full">
+      <div className="bg-black w-full min-h-screen">
         <video
           ref={remoteVideo}
-          className="fixed top-0 left-0 w-full h-screen bg-gray-300 object-cover border-2 border-cyan-200"
+          className="fixed left-[10vw] top-0 w-[80vw] h-[45vw] bg-gray-300 object-cover border-2 border-cyan-200"
         ></video>
         <RemoteCallScreenState />
         <video
@@ -595,8 +583,12 @@ export default function LiveRoom({ roomID }) {
               onClick={handleEndCall}
               className="w-16 h-16 flex items-center justify-center mx-auto rounded-full bg-red-500 hover:bg-red-600 hover:cursor-pointer mx-4"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" className="h-7 w-7 fill-white">
-                <path d="M271.1 367.5L227.9 313.7c-8.688-10.78-23.69-14.51-36.47-8.974l-108.5 46.51c-13.91 6-21.49 21.19-18.11 35.79l23.25 100.8C91.32 502 103.8 512 118.5 512c107.4 0 206.1-37.46 284.2-99.65l-88.75-69.56C300.6 351.9 286.6 360.3 271.1 367.5zM630.8 469.1l-159.6-125.1c65.03-78.97 104.7-179.5 104.7-289.5c0-14.66-9.969-27.2-24.22-30.45L451 .8125c-14.69-3.406-29.73 4.213-35.82 18.12l-46.52 108.5c-5.438 12.78-1.771 27.67 8.979 36.45l53.82 44.08C419.2 232.1 403.9 256.2 386.2 277.4L38.81 5.111C34.41 1.673 29.19 0 24.03 0C16.91 0 9.84 3.158 5.121 9.189c-8.188 10.44-6.37 25.53 4.068 33.7l591.1 463.1c10.5 8.203 25.57 6.328 33.69-4.078C643.1 492.4 641.2 477.3 630.8 469.1z"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 640 512"
+                className="h-7 w-7 fill-white"
+              >
+                <path d="M271.1 367.5L227.9 313.7c-8.688-10.78-23.69-14.51-36.47-8.974l-108.5 46.51c-13.91 6-21.49 21.19-18.11 35.79l23.25 100.8C91.32 502 103.8 512 118.5 512c107.4 0 206.1-37.46 284.2-99.65l-88.75-69.56C300.6 351.9 286.6 360.3 271.1 367.5zM630.8 469.1l-159.6-125.1c65.03-78.97 104.7-179.5 104.7-289.5c0-14.66-9.969-27.2-24.22-30.45L451 .8125c-14.69-3.406-29.73 4.213-35.82 18.12l-46.52 108.5c-5.438 12.78-1.771 27.67 8.979 36.45l53.82 44.08C419.2 232.1 403.9 256.2 386.2 277.4L38.81 5.111C34.41 1.673 29.19 0 24.03 0C16.91 0 9.84 3.158 5.121 9.189c-8.188 10.44-6.37 25.53 4.068 33.7l591.1 463.1c10.5 8.203 25.57 6.328 33.69-4.078C643.1 492.4 641.2 477.3 630.8 469.1z" />
               </svg>
             </div>
           </div>
