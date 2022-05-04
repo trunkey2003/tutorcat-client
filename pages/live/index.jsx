@@ -39,7 +39,9 @@ export default function Index() {
         setRooms(data);
         console.log(data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() =>{
+      })
     socket.on("myID", (myID) => {
       setRoomID(myID);
       setLoading(false);
@@ -363,7 +365,7 @@ export default function Index() {
                 </svg>
               </div>
 
-              <div className="text-lg text-center mt-5 mb-12">Choose your role</div>
+              <div className="text-lg text-center mt-5 mb-12">Pick your role</div>
 
               <div className="p-2 w-full flex justify-center text-xl">
                 <div

@@ -10,6 +10,9 @@ var created;
 
 export default function LiveRoom({ roomID }) {
   const [shareAudio, setShareAudio] = useState(true);
+  const [alerts, setAlerts] = useState([]);
+  const [mySocketID, setMySocketID] = useState('');
+  const [remoteSocketID, setRemoteSocketID] = useState('');
   const [shareCam, setShareCam] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -25,6 +28,7 @@ export default function LiveRoom({ roomID }) {
   const myMediaConnection = useRef();
   const myVideo = useRef();
   const remoteVideo = useRef();
+  const alertsRef = useRef([]);
 
   useEffect(() => {
     setLoading(true);
@@ -34,34 +38,8 @@ export default function LiveRoom({ roomID }) {
           created = data.userCount == 1 ? false : true;
           if (!created) {
             handleCreateRoom();
-            socket.emit("create room", roomID);
-            socket.on("someone leave call", () => {
-              myMediaConnection.current?.close();
-              myMediaConnection.current = null;
-              remoteVideo.current.srcObject = null;
-              //Sẽ clear hết webcam & screen khi người khác out
-              myCallStream.current?.getTracks((track) => {if (track.kind == 'video') track.stop();});
-              setMyCallScreenOff(true);
-              setSharingScreen(false);
-              setShareCam(false);
-              setRemoteCallScreenOff(null);
-            });
-            socket.on("someone join room", (id) => {
-              myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
-              myMediaConnection.current.on("stream", (stream) => {
-                handleRemoteCallScreen(stream);
-              });
-              setRemoteCallScreenOff(true);
-              console.log(id + " joined room");
-            });
           } else {
-            handleJoinRoom();
-            socket.on("end call", () => {
-              myMediaConnection.current?.close();
-              // remoteVideo.current.srcObject = null;
-              // setRemoteCallScreenOff(null);
-              window.location.href = window.location.origin + '/live';
-            });
+            handleJoinRoom(socketID);
           }
 
           socket.on("remote turn webcam off", () => {
@@ -89,12 +67,53 @@ export default function LiveRoom({ roomID }) {
           setLoading(false);
         });
     });
+    return () => socket.disconnect();
   }, []);
 
+  useEffect(() =>{
+    if (!created){
+      socket.on("someone join room", (id) => {
+        setRemoteSocketID(id);
+        myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
+        myMediaConnection.current?.on("stream", (stream) => { //Khong biet tai sao co luc myMediaConnection.currunt lai la undefined o day
+          handleRemoteCallScreen(stream);
+        });
+        setRemoteCallScreenOff(true);
+        handleAddAlert("New attendance !", id + " has joined your room");
+      });
+
+      socket.on("someone leave call", () => {
+        myMediaConnection.current?.close();
+        myMediaConnection.current = null;
+        remoteVideo.current.srcObject = null;
+        //Sẽ clear hết webcam & screen khi người khác out
+        myCallStream.current?.getTracks((track) => { if (track.kind == 'video') track.stop(); });
+        setMyCallScreenOff(true);
+        setSharingScreen(false);
+        setShareCam(false);
+        setRemoteCallScreenOff(null);
+        handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
+      });
+    }; 
+    // return () => socket.disconnect();
+  }, [alerts]);
+
+  const handleAddAlert = (title, content) => {
+    setAlerts([...alerts, {title : title, content : content}]);
+  };
+
+  const handleDeleteAlert = (index) => {
+    const _alerts = [...alerts];
+    _alerts.splice(index,1); 
+    alertsRef.current = [..._alerts]; //Không biết tại sao dùng alersRef thì lại ko dc @_@
+    console.log(alertsRef.current);
+    setAlerts(_alerts);
+  };
+
   const handleMyCallScreen = (stream) => {
-    myVideo.current.srcObject = stream;
-    myVideo.current.muted = true;
-    myVideo.current.play();
+    myVideo?.current.srcObject = stream;
+    myVideo?.current.muted = true;
+    myVideo?.current.play();
     myCallStream.current = stream;
   };
 
@@ -109,7 +128,7 @@ export default function LiveRoom({ roomID }) {
   };
 
   const handleStartShareScreen = () => {
-    if (!myMediaConnection.current) return; 
+    if (!myMediaConnection.current) return;
     navigator.mediaDevices
       .getDisplayMedia({ video: { mediaSource: "screen" }, audio: true })
       .then(async (stream) => {
@@ -341,13 +360,13 @@ export default function LiveRoom({ roomID }) {
           peer.on("disconnected", () => {
             console.log("remote disconnected");
           });
-      
+
           peer.on("close", () => {
             console.log("remote close");
           });
-      
+
           peer.on("call", (call) => {
-            call.answer(myCallStream.current); 
+            call.answer(myCallStream.current);
             call.on("stream", (stream) => {
               handleRemoteCallScreen(stream);
               call.on("close", () => {
@@ -357,6 +376,8 @@ export default function LiveRoom({ roomID }) {
             myMediaConnection.current = call;
             //Send the remote my current video state
           });
+
+          socket.emit("create room", roomID);
         },
         (err) => {
           console.log(err);
@@ -365,7 +386,7 @@ export default function LiveRoom({ roomID }) {
     });
   };
 
-  const handleJoinRoom = () => {
+  const handleJoinRoom = (socketID) => {
     myPeer.current = new Peer("joiner-" + roomID); //tạo ID người vào là joiner-[roomID]
 
     myPeer.current.on("open", (id) => {
@@ -375,6 +396,11 @@ export default function LiveRoom({ roomID }) {
           handleMyCallScreen(myStream);
           myWebcamStream.current = myStream;
           socket.emit("join room", roomID);
+          handleAddAlert("Welcome " + socketID + " !!!", "you have joined room");
+          socket.on("end call", () => {
+            myMediaConnection.current?.close();
+            window.location.href = window.location.origin + '/live';
+          });
           // myStream.getTracks().forEach((track) => {if (track.kind == 'video') track.stop()});
           // const call = myPeer.current.call(roomID, myStream);
 
@@ -417,7 +443,7 @@ export default function LiveRoom({ roomID }) {
       call.on("close", () => {
         console.log("close call");
       });
- 
+
       myMediaConnection.current = call;
     });
   };
@@ -565,6 +591,18 @@ export default function LiveRoom({ roomID }) {
   return (
     <>
       {loading ? <Loading /> : ""}
+      <div className="fixed right-4 top-4 z-[1000] max-h-screen overflow-auto" role="alert">
+        {alerts.length ?
+          alerts.map((alert, index) => <div key={index} className="min-w-[350px] max-w-sm bg-sky-100 border-l-4 border-sky-500 text-sky-700 p-4 mb-4 relative">
+            <p className="font-bold">{alert.title}</p>
+            <span onClick={() => handleDeleteAlert(index)} className="absolute top-0 right-0 px-4 py-3">
+              <svg className="fill-sky-700 h-6 w-6" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
+            </span>
+            <p>{alert.content}</p>
+          </div>)
+          : ''}
+      </div>
+
       <div className="bg-black w-full min-h-screen">
         <video
           ref={remoteVideo}
@@ -596,6 +634,30 @@ export default function LiveRoom({ roomID }) {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        /* width */
+        ::-webkit-scrollbar {
+          width: 10px;
+        }
+        
+        /* Track */
+        ::-webkit-scrollbar-track {
+          box-shadow: inset 0 0 5px grey; 
+          border-radius: 10px;
+        }
+         
+        /* Handle */
+        ::-webkit-scrollbar-thumb {
+          background: #4195a6; 
+          border-radius: 10px;
+        }
+        
+        /* Handle on hover */
+        ::-webkit-scrollbar-thumb:hover {
+          background: #2c6696; 
+        }
+      `}</style>
     </>
   );
 }
