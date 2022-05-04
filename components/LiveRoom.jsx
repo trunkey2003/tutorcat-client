@@ -40,19 +40,22 @@ export default function LiveRoom({ roomID }) {
               myMediaConnection.current = null;
               remoteVideo.current.srcObject = null;
               //Sẽ clear hết webcam & screen khi người khác out
-              myCallStream.current.getTracks((track) => {if (track.kind == 'video') track.stop();});
+              myCallStream.current?.getTracks((track) => {if (track.kind == 'video') track.stop();});
               setMyCallScreenOff(true);
               setSharingScreen(false);
               setShareCam(false);
               setRemoteCallScreenOff(null);
             });
             socket.on("someone join room", (id) => {
+              myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
+              myMediaConnection.current.on("stream", (stream) => {
+                handleRemoteCallScreen(stream);
+              });
               setRemoteCallScreenOff(true);
               console.log(id + " joined room");
             });
           } else {
             handleJoinRoom();
-            socket.emit("join room", roomID);
             socket.on("end call", () => {
               myMediaConnection.current?.close();
               // remoteVideo.current.srcObject = null;
@@ -135,7 +138,7 @@ export default function LiveRoom({ roomID }) {
         setSharingScreen(true);
 
         //Neu ma chua call
-        if (!remoteVideo.current.srcObject) {
+        if (!myMediaConnection.current) {
           return;
         }
 
@@ -161,7 +164,7 @@ export default function LiveRoom({ roomID }) {
 
       if (!shareCam) setMyCallScreenOff(true);
 
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setSharingScreen(false);
         return;
       }
@@ -189,7 +192,7 @@ export default function LiveRoom({ roomID }) {
       myCallStream.current = null;
       myWebcamStream.current?.getTracks().forEach((track) => track.stop());
       //nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setShareAudio(false);
         return;
       }
@@ -203,7 +206,7 @@ export default function LiveRoom({ roomID }) {
       myCallStream.current = stream;
       stream.getTracks().forEach((track) => myWebcamStream.current?.addTrack(track));
       //nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setShareAudio(false);
         return;
       }
@@ -225,7 +228,7 @@ export default function LiveRoom({ roomID }) {
       myCallStream.current = audio;
 
       //nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setShareAudio(true);
         return;
       }
@@ -243,7 +246,7 @@ export default function LiveRoom({ roomID }) {
       });
       stream.getTracks().forEach((track) => myWebcamStream.current?.addTrack(track));
       //nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setShareAudio(true);
         return;
       }
@@ -258,7 +261,7 @@ export default function LiveRoom({ roomID }) {
   };
 
   const handleStartWebcam = () => {
-    if (!myMediaConnection.current) return; 
+    // if (!myMediaConnection.current) return; 
     if (sharingScreen) return;
     myWebcamStream.current?.getTracks().forEach((track) => track.stop());
     navigator.getUserMedia({ video: !shareCam, audio: shareAudio }, (stream) => {
@@ -270,7 +273,7 @@ export default function LiveRoom({ roomID }) {
       setMyCallScreenOff(false);
 
       // Nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         return;
       }
 
@@ -291,7 +294,7 @@ export default function LiveRoom({ roomID }) {
       handleMyCallScreen(null);
 
       //Nếu chưa có ai vào
-      if (!remoteVideo.current.srcObject) {
+      if (!myMediaConnection.current) {
         setShareCam(false);
         setMyCallScreenOff(true);
         return;
@@ -363,34 +366,34 @@ export default function LiveRoom({ roomID }) {
   };
 
   const handleJoinRoom = () => {
-    setRemoteCallScreenOff(true);
     myPeer.current = new Peer("joiner-" + roomID); //tạo ID người vào là joiner-[roomID]
 
     myPeer.current.on("open", (id) => {
       navigator.getUserMedia(
-        { video: false, audio: true },
+        { video: true, audio: true }, //Phải bật video của người join vào lúc mới vào, mới nhận dc video của người gọi :/ có vẻ là cơ chế của PeerJS hoặc là luật của trình duyệt. 
         (myStream) => {
           handleMyCallScreen(myStream);
           myWebcamStream.current = myStream;
-          myStream.getTracks((track) => {if (track.kind == 'video') track.stop()});
-          const call = myPeer.current.call(roomID, myStream);
+          socket.emit("join room", roomID);
+          // myStream.getTracks().forEach((track) => {if (track.kind == 'video') track.stop()});
+          // const call = myPeer.current.call(roomID, myStream);
 
-          call.on("stream", (remoteStream) => {
-            console.log(remoteStream.getTracks());
-            handleRemoteCallScreen(remoteStream);
-            // if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
-            //   setRemoteCallScreenOff(false);
-            // } else {
-            //   setRemoteCallScreenOff(true);
-            // }
-          });
+          // call.on("stream", (remoteStream) => {
+          //   console.log(remoteStream.getTracks());
+          //   handleRemoteCallScreen(remoteStream);
+          //   if (remoteStream.getTracks()[remoteStream.getTracks().length - 1].kind == "video") {
+          //     setRemoteCallScreenOff(false);
+          //   } else {
+          //     setRemoteCallScreenOff(true);
+          //   }
+          // });
 
           // setRemoteCallScreenOff(true);
 
-          call.on("close", () => {
-            console.log("close stream");
-          });
-          myMediaConnection.current = call;
+          // call.on("close", () => {
+          //   console.log("close stream");
+          // });
+          // myMediaConnection.current = call;
         },
         (err) => {
           console.log(err);
@@ -400,10 +403,9 @@ export default function LiveRoom({ roomID }) {
 
     // người join room nhận dc sự thay đổi từ người tạo room
     myPeer.current.on("call", (call) => {
-      console.log("myPeer.current.onCall");
-      call.answer(myWebcamStream.current);
+      call.answer(myCallStream.current);
       call.on("stream", (stream) => {
-        console.log("call.onStream");
+        console.log(stream.getTracks());
         handleRemoteCallScreen(stream);
         if (stream.getTracks()[stream.getTracks().length - 1].kind == "video") {
           setRemoteCallScreenOff(false);
