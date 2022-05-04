@@ -111,9 +111,9 @@ export default function LiveRoom({ roomID }) {
   };
 
   const handleMyCallScreen = (stream) => {
-    myVideo?.current.srcObject = stream;
-    myVideo?.current.muted = true;
-    myVideo?.current.play();
+    myVideo.current.srcObject = stream;
+    myVideo.current.muted = true;
+    myVideo.current.play();
     myCallStream.current = stream;
   };
 

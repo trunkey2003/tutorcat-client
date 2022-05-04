@@ -127,7 +127,7 @@ export default function Index() {
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
               You can call privately, and other people won{`'`}t see your identity. But your activity
-              might still be visible to us
+              might still be visible to us.
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              We don{`'`}t require account to use LiveTutor platform, but your space will be limited
+              We don{`'`}t require creating an account to use LiveTutor platform, but your space will be limited.
             </p>
           </div>
         </div>
@@ -163,8 +163,8 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              We don{`'`}t record your video for any purpose, and your history call will just only
-              visible to you and your caller
+              We don{`'`}t record your video for any purpose, and your history calls will just only.
+              visible to you 
             </p>
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function Index() {
               </svg>
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
-            <p className="m-4 text-sm">This platform is totally free for everyone</p>
+            <p className="m-4 text-sm">This platform is totally free for everyone.</p>
           </div>
         </div>
       </div>
