@@ -4,6 +4,10 @@ import { io } from "socket.io-client";
 import Loading from "./Loading";
 import { Axios } from "../config/axios";
 import Error from "./Error";
+import ChatBreak from "./chat/ChatBreak";
+import RemoteChat from "./chat/RemoteChat";
+import MeChat from "./chat/MeChat";
+import ChatFooter from "./chat/ChatFooter";
 
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/room`);
 var created;
@@ -11,7 +15,7 @@ var created;
 export default function LiveRoom({ roomID }) {
   const [shareAudio, setShareAudio] = useState(true);
   const [alerts, setAlerts] = useState([]);
-  const [mySocketID, setMySocketID] = useState('');
+  const [myName, setMyName] = useState('');
   const [remoteSocketID, setRemoteSocketID] = useState('');
   const [shareCam, setShareCam] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
@@ -19,6 +23,9 @@ export default function LiveRoom({ roomID }) {
   const [remoteCallScreenOff, setRemoteCallScreenOff] = useState(null);
   const [myCallScreenOff, setMyCallScreenOff] = useState(true);
   const [error, setError] = useState(false);
+  const [classChatBox, setClassChatBox] = useState('w-0 hidden');
+  const [classChatToogle, setClassChatToogle] = useState('left-0');
+  const [messages, setMessages] = useState([]);
 
   const myCallTrack = useRef();
   const myCallStream = useRef();
@@ -35,9 +42,11 @@ export default function LiveRoom({ roomID }) {
     socket.on("me", (socketID) => {
       Axios.put(`/api/room/join/${roomID}/${socketID}`)
         .then(({ data }) => {
+          setMyName(data.userName1);
           created = data.userCount == 1 ? false : true;
           if (!created) {
             handleCreateRoom();
+         
           } else {
             handleJoinRoom(socketID);
           }
@@ -95,16 +104,29 @@ export default function LiveRoom({ roomID }) {
         handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
       });
     }; 
+    socket.on("someone chat", (message) =>{
+      console.log(messages);
+      handleAddMessageFromRemote(message);
+    });
     // return () => socket.disconnect();
-  }, [alerts]);
+  }, [alerts, messages]);
+
+  const handleAddMessageFromMe = (content) =>{
+    setMessages([...messages, {from : 'me', content : content}]);
+    socket.emit("me chat", {content : content, roomID : roomID});
+  }
+
+  const handleAddMessageFromRemote = (content) =>{
+    setMessages([...messages, {from : 'remote', content : content}]);
+  }
 
   const handleAddAlert = (title, content) => {
-    setAlerts([...alerts, {title : title, content : content}]);
+    setAlerts([...alerts, { title: title, content: content }]);
   };
 
   const handleDeleteAlert = (index) => {
     const _alerts = [...alerts];
-    _alerts.splice(index,1); 
+    _alerts.splice(index, 1);
     alertsRef.current = [..._alerts]; //Không biết tại sao dùng alersRef thì lại ko dc @_@
     console.log(alertsRef.current);
     setAlerts(_alerts);
@@ -448,6 +470,13 @@ export default function LiveRoom({ roomID }) {
     });
   };
 
+  const handleClassChatBox = () => {
+    const _classChatBox = (classChatBox == 'show-chat-box') ? 'hide-chat-box' : 'show-chat-box';
+    const _classChatToogle = (classChatToogle == 'move-out-chat-toogle-button') ? 'move-in-chat-toogle-button' : 'move-out-chat-toogle-button';
+    setClassChatBox(_classChatBox);
+    setClassChatToogle(_classChatToogle);
+  }
+
   const MuteButton = () => {
     return (
       <div
@@ -602,6 +631,24 @@ export default function LiveRoom({ roomID }) {
           </div>)
           : ''}
       </div>
+
+      <div onClick={handleClassChatBox} className={`fixed bottom-[330px] flex justify-center items-center w-[40px] h-[60px] bg-blue-900 z-[1001] rounded-r-xl ${classChatToogle}`}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" className="w-7 w-7 fill-white">
+          <path d="M416 176C416 78.8 322.9 0 208 0S0 78.8 0 176c0 39.57 15.62 75.96 41.67 105.4c-16.39 32.76-39.23 57.32-39.59 57.68c-2.1 2.205-2.67 5.475-1.441 8.354C1.9 350.3 4.602 352 7.66 352c38.35 0 70.76-11.12 95.74-24.04C134.2 343.1 169.8 352 208 352C322.9 352 416 273.2 416 176zM599.6 443.7C624.8 413.9 640 376.6 640 336C640 238.8 554 160 448 160c-.3145 0-.6191 .041-.9336 .043C447.5 165.3 448 170.6 448 176c0 98.62-79.68 181.2-186.1 202.5C282.7 455.1 357.1 512 448 512c33.69 0 65.32-8.008 92.85-21.98C565.2 502 596.1 512 632.3 512c3.059 0 5.76-1.725 7.02-4.605c1.229-2.879 .6582-6.148-1.441-8.354C637.6 498.7 615.9 475.3 599.6 443.7z" />
+        </svg>
+      </div>
+
+      {<div className={`fixed left-0 bottom-10 h-[350px] bg-gray-900 bg-opacity-70 z-[1000] ${classChatBox} overflow-hidden`}>
+        {<div className="p-4 max-h-[310px] overflow-x-auto">
+          {(messages.length)? 
+            messages.map((message, index) =>
+              (message.from == 'me')? <div key={index}><MeChat content={message.content}/></div> : <div key={index}><RemoteChat content={message.content}/></div>
+            )
+            : ''
+          }
+        </div>}
+        <ChatFooter handleAddMessageFromMe={handleAddMessageFromMe}/>
+      </div>}
 
       <div className="bg-black w-full min-h-screen">
         <video

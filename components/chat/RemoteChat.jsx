@@ -1,22 +1,10 @@
 import React from "react";
 
-export default function RemoteChat({message}) {
+export default function RemoteChat({ content }) {
   return (
-    <div className="chat-message">
-      <div className="flex items-end">
-        <div className="flex flex-col space-y-2 text-xs max-w-xs mx-2 order-2 items-start">
-          <div>
-            <span className="px-4 py-2 rounded-lg inline-block rounded-bl-none bg-gray-300 text-gray-600">
-              {message}
-            </span>
-          </div>
-        </div>
-        <img
-          src="https://trunkey2003.github.io/general-img/CHONGU.jpg"
-          alt="My profile"
-          className="w-6 h-6 rounded-full order-1"
-        />
-      </div>
+    <div className="flex justify-start mb-4">
+      <img src="/image/remote-profile-pic.jpg" className="w-10 h-10 rounded-full"></img>
+      <p className="text-white ml-3 bg-sky-800 px-5 py-2 rounded-xl max-w-[300px] break-words">{content}</p>
     </div>
   );
 }
