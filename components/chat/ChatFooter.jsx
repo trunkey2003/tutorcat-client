@@ -19,7 +19,7 @@ export default function ChatFooter({handleAddMessageFromMe}) {
     }
   }
   return (
-    <div className="absolute left-0 bottom-0 w-full h-[40px] bg-blue-900">
+    <div className="absolute left-0 bottom-0 w-full h-[40px] bg-sky-900">
       <div className="relative flex">
         <span className="absolute inset-y-0 flex items-center">
           <button
