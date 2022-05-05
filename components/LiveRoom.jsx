@@ -95,12 +95,6 @@ export default function LiveRoom({ roomID }) {
       socket.on("someone leave call", () => {
         myMediaConnection.current?.close();
         myMediaConnection.current = null;
-        remoteVideo.current.srcObject = null;
-        //Sẽ clear hết webcam & screen khi người khác out
-        myCallStream.current?.getTracks((track) => { if (track.kind == 'video') track.stop(); });
-        setMyCallScreenOff(true);
-        setSharingScreen(false);
-        setShareCam(false);
         setRemoteCallScreenOff(null);
         handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
       });
