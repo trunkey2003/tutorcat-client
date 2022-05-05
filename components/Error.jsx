@@ -24,10 +24,10 @@ export default function Error() {
           </h6>
 
           <p className="mb-8 text-center text-gray-500 md:text-lg">
-            The page you’re looking for doesn’t exist.
+            The room you attempt to join doesn’t exist.
           </p>
 
-          <a onClick={() => window.location = window.location.origin + '/live'} className="px-6 py-2 text-sm font-semibold text-blue-800 bg-blue-100">
+          <a onClick={() => window.location = window.location.origin + '/live'} className="px-6 py-2 text-sm font-semibold text-blue-800 bg-blue-100 hover:cursor-pointer hover:bg-blue-200">
             Go home
           </a>
         </div>
