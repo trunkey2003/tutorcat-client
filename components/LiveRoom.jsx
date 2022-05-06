@@ -4,10 +4,10 @@ import { io } from "socket.io-client";
 import Loading from "./Loading";
 import { Axios } from "../config/axios";
 import Error from "./Error";
-import ErrorPermissionMicroHost from './ErrorPermissionMicroHost';
-import ErrorPermissionCameraHost from './ErrorPermissionCameraHost';
-import ErrorPermissionMicroJoiner from './ErrorPermissionMicroJoiner';
-import ErrorPermissionCameraJoiner from "./ErrorPermissionCameraJoiner";
+// import ErrorPermissionMicroHost from './ErrorPermissionMicroHost';
+// import ErrorPermissionCameraHost from './ErrorPermissionCameraHost';
+// import ErrorPermissionMicroJoiner from './ErrorPermissionMicroJoiner';
+// import ErrorPermissionCameraJoiner from "./ErrorPermissionCameraJoiner";
 import ChatBreak from "./chat/ChatBreak";
 import RemoteChat from "./chat/RemoteChat";
 import MeChat from "./chat/MeChat";
@@ -18,19 +18,25 @@ var created;
 
 export default function LiveRoom({ roomID }) {
   const [shareAudio, setShareAudio] = useState(true);
-  const [alerts, setAlerts] = useState([]);
-  const [myName, setMyName] = useState('');
-  const [remoteSocketID, setRemoteSocketID] = useState('');
   const [shareCam, setShareCam] = useState(false);
   const [sharingScreen, setSharingScreen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [remoteCallScreenOff, setRemoteCallScreenOff] = useState(null);
+
   const [myCallScreenOff, setMyCallScreenOff] = useState(true);
-  const [error, setError] = useState('');
+  const [remoteCallScreenOff, setRemoteCallScreenOff] = useState(null);
+
+  const [alerts, setAlerts] = useState([]);
+  const [messages, setMessages] = useState([]);
+
+  const [myName, setMyName] = useState('');
+  const [remoteSocketID, setRemoteSocketID] = useState('');
+
   const [missingPermissions, setMissingPermissions] = useState([]);
+
   const [classChatBox, setClassChatBox] = useState('w-0 hidden');
   const [classChatToogle, setClassChatToogle] = useState('left-0');
-  const [messages, setMessages] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const myCallTrack = useRef();
   const myCallStream = useRef();
@@ -42,83 +48,90 @@ export default function LiveRoom({ roomID }) {
   const remoteVideo = useRef();
   const alertsRef = useRef([]);
 
-  useEffect(() => {
-    setLoading(true);
-    socket.on("me", (socketID) => {
-      Axios.put(`/api/room/join/${roomID}/${socketID}`)
-        .then(({ data }) => {
-          setMyName(data.userName1);
-          created = data.userCount == 1 ? false : true;
-          if (!created) {
-            handleCreateRoom();
+  // useEffect(() => {
+  //   setLoading(true);
+  //   socket.on("me", (socketID) => {
+  //     Axios.put(`/api/room/join/${roomID}/${socketID}`)
+  //       .then(({ data }) => {
+  //         setMyName(data.userName1);
+  //         created = data.userCount == 1 ? false : true;
+  //         if (!created) {
+  //           handleCreateRoom();
 
-          } else {
-            handleJoinRoom(socketID);
-            handleAddChatBreak('You have joined room');
-          }
+  //         } else {
+  //           handleJoinRoom(socketID);
+  //           handleAddChatBreak('You have joined room');
+  //         }
 
-          socket.on("remote turn webcam off", () => {
-            setRemoteCallScreenOff(true);
-            handleRemoteCallScreen(null);
-          });
+  //         socket.on("remote turn webcam off", () => {
+  //           setRemoteCallScreenOff(true);
+  //           handleRemoteCallScreen(null);
+  //         });
 
-          socket.on("remote turn webcam on", () => {
-            setRemoteCallScreenOff(false);
-          });
+  //         socket.on("remote turn webcam on", () => {
+  //           setRemoteCallScreenOff(false);
+  //         });
 
-          socket.on("remote start share screen", () => {
-            setRemoteCallScreenOff(false);
-          });
+  //         socket.on("remote start share screen", () => {
+  //           setRemoteCallScreenOff(false);
+  //         });
 
-          socket.on("remote stop share screen", () => {
-            setRemoteCallScreenOff(true);
-            handleRemoteCallScreen(null);
-          });
+  //         socket.on("remote stop share screen", () => {
+  //           setRemoteCallScreenOff(true);
+  //           handleRemoteCallScreen(null);
+  //         });
 
-          setLoading(false);
-        })
-        .catch((err) => {
-          setError('404');
-          setLoading(false);
-        });
-    });
-  }, []);
+  //         setLoading(false);
+  //       })
+  //       .catch((err) => {
+  //         setError('404');
+  //         setLoading(false);
+  //       });
+  //   });
+  // }, []);
 
-  useEffect(() => {
-    if (!created) {
-      socket.on("someone join room", (id) => {
-        setRemoteSocketID(id);
-        myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
-        myMediaConnection.current?.on("stream", (stream) => { //Khong biet tai sao co luc myMediaConnection.currunt lai la undefined o day
-          handleRemoteCallScreen(stream);
-        });
-        setRemoteCallScreenOff(true);
-        handleAddAlert("New attendance !", id + " has joined your room");
-      });
+  // useEffect(() => {
+  //   if (!created) {
+  //     socket.on("someone join room", (id) => {
+  //       setRemoteSocketID(id);
+  //       myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
+  //       myMediaConnection.current?.on("stream", (stream) => { //Khong biet tai sao co luc myMediaConnection.currunt lai la undefined o day
+  //         handleRemoteCallScreen(stream);
+  //       });
+  //       setRemoteCallScreenOff(true);
+  //       handleAddAlert("New attendance !", id + " has joined your room");
+  //     });
 
-      socket.on("someone leave call", () => {
-        myMediaConnection.current?.close();
-        myMediaConnection.current = null;
-        setRemoteCallScreenOff(null);
-        handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
-        setRemoteSocketID('');
-      });
-    };
+  //     socket.on("someone leave call", () => {
+  //       myMediaConnection.current?.close();
+  //       myMediaConnection.current = null;
+  //       setRemoteCallScreenOff(null);
+  //       handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
+  //       setRemoteSocketID('');
+  //     });
+  //   };
 
-    socket.on("someone chat", (message) => {
-      handleAddMessageFromRemote(message);
-    });
+  //   socket.on("someone chat", (message) => {
+  //     handleAddMessageFromRemote(message);
+  //   });
 
-    socket.on("new chat break", (content) => {
-      handleAddChatBreak(content);
-    })
-    // return () => socket.disconnect();
-  }, [alerts, messages, remoteSocketID]);
+  //   socket.on("new chat break", (content) => {
+  //     handleAddChatBreak(content);
+  //   })
+  //   // return () => socket.disconnect();
+  // }, [alerts, messages, remoteSocketID]);
 
+  const handleOpenInputCodeModal = () =>{
+    setShowInputCodeModal(true);
+  };
+
+  const handleCloseInputCodeModal = () =>{
+    setShowInputCodeModal(false);
+  };
 
   const handleAddChatBreak = (content) => {
     setMessages([...messages, { from: 'me', content: content, type: 'chat break' }]);
-  }
+  };
 
   const handleAddMessageFromMe = (content) => {
     setMessages([...messages, { from: 'me', content: content }]);
@@ -307,9 +320,9 @@ export default function LiveRoom({ roomID }) {
       // if (!created && myCallTrack.current?.enabled) myPeer.current.call("joiner-" + roomID, new MediaStream(myCallTrack.current));
       setShareAudio(true);
     },
-    (err) =>{
-      setShareAudio(false);
-    });
+      (err) => {
+        setShareAudio(false);
+      });
     // myVideo.current.muted = false;
   };
 
@@ -337,9 +350,9 @@ export default function LiveRoom({ roomID }) {
 
       socket.emit("turn webcam on", roomID);
     },
-    (err) =>{
-      setShareCam(false);
-    });
+      (err) => {
+        setShareCam(false);
+      });
   };
 
   const handleStopWebcam = () => {
@@ -389,7 +402,7 @@ export default function LiveRoom({ roomID }) {
     myPeer.current = peer;
 
     peer.on("open", (id) => {
-      console.log("open");
+      handleAddChatBreak("You have joined room");
       navigator.getUserMedia(
         { video: false, audio: true },
         (stream) => {

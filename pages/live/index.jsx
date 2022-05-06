@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { Axios } from "../../config/axios";
 import { io } from "socket.io-client";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
 import Modal from "@mui/material/Modal";
 import Loading from "../../components/Loading";
 
@@ -22,6 +20,7 @@ const style = {
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/live`);
 
 export default function Index() {
+  const [error, setError] = useState('');
   const [sectionModal, setSectionModal] = useState(1);
   const [showModalCreateRoom, setShowModalCreateRoom] = useState(false);
   const [userName, setUserName] = useState("");
@@ -132,6 +131,14 @@ export default function Index() {
   const handleJoinRoom = (roomID) => {
     window.location.href = window.location.origin + "/live/" + roomID;
   };
+
+  if (error == '503') return (
+  <div className="w-full h-screen bg-black bg-opacity-70 flex justify-center items-center text-white text-[40px]">
+    <div>
+    <div className="text-[80px] font-bold text-center text-red-300">503</div>
+    Please reload your page, and try again!
+    </div>
+  </div>)
 
   return (
     <div className="bg-sky-100">
@@ -569,9 +576,9 @@ export default function Index() {
                   <div className="text-sm font-medium mb-5">Python</div>
                 </div>
                 <div
-                  onClick={() => handleAddProgrammingLanguage("HTML & CSS")}
+                  onClick={() => handleAddProgrammingLanguage("HTML/CSS")}
                   className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
-                    programmingLanguages.includes("HTML & CSS")
+                    programmingLanguages.includes("HTML/CSS")
                       ? "border-4 border-blue-900"
                       : "border-sky-100"
                   } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
@@ -584,7 +591,7 @@ export default function Index() {
                     className="absolute top-[60%] right-[40%] mr-[-20px] h-5 w-5"
                     src="/image/css.png"
                   />
-                  <div className="text-sm font-medium mb-5">HTML & CSS</div>
+                  <div className="text-sm font-medium mb-5">HTML/CSS</div>
                 </div>
                 <div
                   onClick={() => handleAddProgrammingLanguage("Other")}
