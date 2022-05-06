@@ -12,7 +12,7 @@ const style = {
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: 600,
+  width: 400,
   height: 500,
   bgcolor: "background.paper",
   border: "2px solid #000",
@@ -22,12 +22,12 @@ const style = {
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/live`);
 
 export default function Index() {
+  const [sectionModal, setSectionModal] = useState(1);
   const [showModalCreateRoom, setShowModalCreateRoom] = useState(false);
-  const [showUserNameSection, setShowUserNameSection] = useState(true);
-  const [showCreateRoomSection, setShowCreateRoomSection] = useState(false);
   const [userName, setUserName] = useState("");
-  const [showJobSection, setShowJobSection] = useState(false);
   const [userJob, setUserJob] = useState("");
+  const [language, setLanguage] = useState("");
+  const [programmingLanguages, setProgrammingLanguages] = useState([]);
   const [roomID, setRoomID] = useState("");
   const [loading, setLoading] = useState(false);
   const [rooms, setRooms] = useState([]);
@@ -39,8 +39,8 @@ export default function Index() {
         setRooms(data);
         console.log(data);
       })
-      .catch(() => {})
-      .finally(() =>{
+      .catch(() => { })
+      .finally(() => {
       })
     socket.on("myID", (myID) => {
       setRoomID(myID);
@@ -54,14 +54,33 @@ export default function Index() {
 
   const handleSubmitUserName = () => {
     setUserName(userName);
-    setShowUserNameSection(false);
-    setShowJobSection(true);
+    setSectionModal(++sectionModal);
   };
 
   const handleSubmitUserJob = (job) => {
     setUserJob(job);
-    setShowJobSection(false);
-    setShowCreateRoomSection(true);
+    setSectionModal(++sectionModal);
+  };
+
+  const handleSubmitLanguage = (language) => {
+    setLanguage(language);
+    setSectionModal(++sectionModal);
+  };
+
+  const handleAddProgrammingLanguage = (language) => {
+    if (programmingLanguages.includes(language)) {
+      setProgrammingLanguages(programmingLanguages.filter(e => e != language));
+      return;
+    }
+    setProgrammingLanguages([...programmingLanguages, language]);
+  };
+
+  const handleSubmitProgrammingLanguages = () => {
+    if (!programmingLanguages.length) {
+      alert("Please pick at least one programming language !!");
+      return;
+    }
+    setSectionModal(++sectionModal);
   };
 
   const handleShowModalCreateRoom = () => {
@@ -88,20 +107,25 @@ export default function Index() {
   };
 
   const handleCreateRoom = () => {
-    if (!roomID) return;
+    if (!roomID) {
+      alert("Fail to create room please restart your page");
+      return;
+    }
     const room = {
       roomID: roomID,
       userJob: userJob,
+      language: language,
+      programmingLanguages: programmingLanguages
     };
 
-    if (userName != "") room.userName11 = userName;
+    if (userName != "") room.userName1 = userName;
 
     Axios.post("/api/room/add", room)
       .then(() => {
         window.location.href = window.location.origin + "/live/" + roomID;
       })
       .catch(() => {
-        alert("fail to create room");
+        alert("Fail to create room, please try another information");
       });
   };
 
@@ -112,8 +136,8 @@ export default function Index() {
   return (
     <div className="bg-sky-100">
       <div className="md:mx-[15%] flex flex-wrap justify-center">
-        <div className="bg-sky-500 w-52 h-72 m-8 static rounded-lg ">
-          <div className="bg-white w-52 h-72 -m-2 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
+        <div className="bg-sky-500 w-60 h-72 m-8 static rounded-lg ">
+          <div className="bg-white w-60 h-72 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
             <h1 className="m-4 text-2xl font-bold flex items-center">
               Private
               <svg
@@ -126,13 +150,13 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              You can call privately, and other people won{`'`}t see your identity. But your activity
-              might still be visible to us.
+              You can call privately, and other people won{`'`}t see your identity. But your
+              activity might still be visible to us.
             </p>
           </div>
         </div>
-        <div className="bg-sky-500 w-52 h-72 m-8 static rounded-lg ">
-          <div className="bg-white w-52 h-72 -m-2 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
+        <div className="bg-sky-500 w-60 h-72 m-8 static rounded-lg ">
+          <div className="bg-white w-60 h-72 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
             <h1 className="m-4 text-2xl font-bold flex items-center">
               Easy
               <svg
@@ -145,12 +169,13 @@ export default function Index() {
             </h1>
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
-              We don{`'`}t require creating an account to use LiveTutor platform, but your space will be limited.
+              We don{`'`}t require creating an account to use LiveTutor platform, but your space
+              will be limited.
             </p>
           </div>
         </div>
-        <div className="bg-sky-500 w-52 h-72 m-8 static rounded-lg ">
-          <div className="bg-white w-52 h-72 -m-2 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
+        <div className="bg-sky-500 w-60 h-72 m-8 static rounded-lg ">
+          <div className="bg-white w-60 h-72 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
             <h1 className="m-4 text-2xl font-bold flex items-center">
               Secure
               <svg
@@ -164,12 +189,12 @@ export default function Index() {
             <hr className="m-4 rounded-2xl border-t-2" />
             <p className="m-4 text-sm">
               We don{`'`}t record your video for any purpose, and your history calls will just only.
-              visible to you 
+              visible to you
             </p>
           </div>
         </div>
-        <div className="bg-sky-500 w-52 h-72 m-8 static rounded-lg ">
-          <div className="bg-white w-52 h-72 -m-2 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
+        <div className="bg-sky-500 w-60 h-72 m-8 static rounded-lg ">
+          <div className="bg-white w-60 h-72 hover:m-0 absolute rounded-lg shadow-lg hover:shadow-2xl transition-all duration-150 ease-out hover:ease-in ">
             <h1 className="m-4 text-2xl font-bold flex items-center">
               Free
               <svg
@@ -217,13 +242,13 @@ export default function Index() {
             </svg>
           </div>
         </div>
-        <div className="flex flex-wrap bg-white min-h-screen rounded p-16">
+        <div className="flex flex-wrap bg-white min-h-screen rounded p-5 md:p-16">
           {rooms.length
             ? rooms.map((room) => (
                 <div
                   onClick={() => handleJoinRoom(room.roomID)}
                   key={room.roomID}
-                  className="relative p-5 mb-5 w-[18%] h-[170px] mx-[0.5%] bg-sky-100 text-black border-2 border-black rounded hover:border-sky-500 hover:cursor-pointer"
+                  className="relative p-5 mb-5 w-full md:w-[18%] h-[170px] mx-[0.5%] bg-sky-100 text-black border-2 border-black rounded hover:border-sky-500 hover:cursor-pointer"
                 >
                   <svg
                     onClick={(e) => handleDeleteRoom(e, room.roomID)}
@@ -302,7 +327,7 @@ export default function Index() {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
-          {showUserNameSection ? (
+          {sectionModal == 1 ? (
             <div className="font-tapestry p-4">
               <div className="text-2xl text-center flex justify-center font-semibold mt-5">
                 Welcome To Tutor Cat
@@ -341,16 +366,15 @@ export default function Index() {
             ""
           )}
 
-          {showJobSection ? (
+          {sectionModal == 2 ? (
             <div className="font-tapestry p-4">
               <svg
                 onClick={() => {
-                  setShowUserNameSection(true);
-                  setShowJobSection(false);
+                  setSectionModal(--sectionModal);
                 }}
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 512 512"
-                className="absolute top-5 left-5 w-10 h-10 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
+                className="absolute top-5 left-5 w-7 h-7 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
               >
                 <path d="M256 0C114.6 0 0 114.6 0 256c0 141.4 114.6 256 256 256s256-114.6 256-256C512 114.6 397.4 0 256 0zM384 288H205.3l49.38 49.38c12.5 12.5 12.5 32.75 0 45.25s-32.75 12.5-45.25 0L105.4 278.6C97.4 270.7 96 260.9 96 256c0-4.883 1.391-14.66 9.398-22.65l103.1-103.1c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25L205.3 224H384c17.69 0 32 14.33 32 32S401.7 288 384 288z" />
               </svg>
@@ -367,45 +391,47 @@ export default function Index() {
 
               <div className="text-lg text-center mt-5 mb-12">Pick your role</div>
 
-              <div className="p-2 w-full flex justify-center text-xl">
+              <div className="p-2 w-full flex justify-center">
                 <div
                   onClick={() => handleSubmitUserJob("Student")}
-                  className="w-24 md:w-36 h-24 md:h-36 bg-sky-100 mx-4 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
                 >
-                  <svg
-                    className="h-5 w-5 fill-blue-900 mr-2"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 512 512"
-                  >
-                    <path d="M45.63 79.75L52 81.25v58.5C45 143.9 40 151.3 40 160c0 8.375 4.625 15.38 11.12 19.75L35.5 242C33.75 248.9 37.63 256 43.13 256h41.75c5.5 0 9.375-7.125 7.625-13.1L76.88 179.8C83.38 175.4 88 168.4 88 160c0-8.75-5-16.12-12-20.25V87.13L128 99.63l.001 60.37c0 70.75 57.25 128 128 128s127.1-57.25 127.1-128L384 99.62l82.25-19.87c18.25-4.375 18.25-27 0-31.5l-190.4-46c-13-3-26.62-3-39.63 0l-190.6 46C27.5 52.63 27.5 75.38 45.63 79.75zM359.2 312.8l-103.2 103.2l-103.2-103.2c-69.93 22.3-120.8 87.2-120.8 164.5C32 496.5 47.53 512 66.67 512h378.7C464.5 512 480 496.5 480 477.3C480 400 429.1 335.1 359.2 312.8z" />
-                  </svg>
-                  <div>Student</div>
+                  <div>
+                    <svg
+                      className="absolute top-[60%] right-[50%] mr-[-10px] md:block h-5 w-5 fill-blue-900"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 512 512"
+                    >
+                      <path d="M45.63 79.75L52 81.25v58.5C45 143.9 40 151.3 40 160c0 8.375 4.625 15.38 11.12 19.75L35.5 242C33.75 248.9 37.63 256 43.13 256h41.75c5.5 0 9.375-7.125 7.625-13.1L76.88 179.8C83.38 175.4 88 168.4 88 160c0-8.75-5-16.12-12-20.25V87.13L128 99.63l.001 60.37c0 70.75 57.25 128 128 128s127.1-57.25 127.1-128L384 99.62l82.25-19.87c18.25-4.375 18.25-27 0-31.5l-190.4-46c-13-3-26.62-3-39.63 0l-190.6 46C27.5 52.63 27.5 75.38 45.63 79.75zM359.2 312.8l-103.2 103.2l-103.2-103.2c-69.93 22.3-120.8 87.2-120.8 164.5C32 496.5 47.53 512 66.67 512h378.7C464.5 512 480 496.5 480 477.3C480 400 429.1 335.1 359.2 312.8z" />
+                    </svg>
+                    <div className="text-sm font-medium mb-5">Student</div>
+                  </div>
                 </div>
                 <div
                   onClick={() => handleSubmitUserJob("Developer")}
-                  className="w-24 md:w-36 h-24 md:h-36 bg-sky-100 mx-4 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
                 >
                   <svg
-                    className="h-5 w-5 fill-blue-900 mr-2"
+                    className="absolute top-[60%] right-[50%] mr-[-10px] md:block h-5 w-5 fill-blue-900"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 448 512"
                   >
                     <path d="M352 128C352 198.7 294.7 256 224 256C153.3 256 96 198.7 96 128C96 57.31 153.3 0 224 0C294.7 0 352 57.31 352 128zM209.1 359.2L176 304H272L238.9 359.2L272.2 483.1L311.7 321.9C388.9 333.9 448 400.7 448 481.3C448 498.2 434.2 512 417.3 512H30.72C13.75 512 0 498.2 0 481.3C0 400.7 59.09 333.9 136.3 321.9L175.8 483.1L209.1 359.2z" />
                   </svg>
-                  <div>Developer</div>
+                  <div className="text-sm font-medium mb-5">Developer</div>
                 </div>
                 <div
                   onClick={() => handleSubmitUserJob("Other")}
-                  className="w-24 md:w-36 h-24 md:h-36 bg-sky-100 mx-4 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
                 >
                   <svg
-                    className="h-5 w-5 fill-blue-900 mr-2"
+                    className="absolute top-[60%] right-[50%] mr-[-10px] md:block h-5 w-5 fill-blue-900"
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 448 512"
                   >
                     <path d="M377.7 338.8l37.15-92.87C419 235.4 411.3 224 399.1 224h-57.48C348.5 209.2 352 193 352 176c0-4.117-.8359-8.057-1.217-12.08C390.7 155.1 416 142.3 416 128c0-16.08-31.75-30.28-80.31-38.99C323.8 45.15 304.9 0 277.4 0c-10.38 0-19.62 4.5-27.38 10.5c-15.25 11.88-36.75 11.88-52 0C190.3 4.5 181.1 0 170.7 0C143.2 0 124.4 45.16 112.5 88.98C63.83 97.68 32 111.9 32 128c0 14.34 25.31 27.13 65.22 35.92C96.84 167.9 96 171.9 96 176C96 193 99.47 209.2 105.5 224H48.02C36.7 224 28.96 235.4 33.16 245.9l37.15 92.87C27.87 370.4 0 420.4 0 477.3C0 496.5 15.52 512 34.66 512H413.3C432.5 512 448 496.5 448 477.3C448 420.4 420.1 370.4 377.7 338.8zM176 479.1L128 288l64 32l16 32L176 479.1zM271.1 479.1L240 352l16-32l64-32L271.1 479.1zM320 186C320 207 302.8 224 281.6 224h-12.33c-16.46 0-30.29-10.39-35.63-24.99C232.1 194.9 228.4 192 224 192S215.9 194.9 214.4 199C209 213.6 195.2 224 178.8 224h-12.33C145.2 224 128 207 128 186V169.5C156.3 173.6 188.1 176 224 176s67.74-2.383 96-6.473V186z" />
                   </svg>
-                  <div>Other</div>
+                  <div className="text-sm font-medium mb-5">Other</div>
                 </div>
               </div>
             </div>
@@ -413,16 +439,184 @@ export default function Index() {
             ""
           )}
 
-          {showCreateRoomSection ? (
+          {sectionModal == 3 ? (
             <div className="font-tapestry p-4">
               <svg
                 onClick={() => {
-                  setShowCreateRoomSection(false);
-                  setShowJobSection(true);
+                  setSectionModal(--sectionModal);
                 }}
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 512 512"
-                className="absolute top-5 left-5 w-10 h-10 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
+                className="absolute top-5 left-5 w-7 h-7 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
+              >
+                <path d="M256 0C114.6 0 0 114.6 0 256c0 141.4 114.6 256 256 256s256-114.6 256-256C512 114.6 397.4 0 256 0zM384 288H205.3l49.38 49.38c12.5 12.5 12.5 32.75 0 45.25s-32.75 12.5-45.25 0L105.4 278.6C97.4 270.7 96 260.9 96 256c0-4.883 1.391-14.66 9.398-22.65l103.1-103.1c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25L205.3 224H384c17.69 0 32 14.33 32 32S401.7 288 384 288z" />
+              </svg>
+              <div className="text-2xl text-center flex justify-center font-semibold mt-5">
+                Welcome To Tutor Cat
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 576 512"
+                  className="h-5 w-5 fill-blue-900"
+                >
+                  <path d="M322.6 192C302.4 192 215.8 194 160 278V192c0-53-43-96-96-96C46.38 96 32 110.4 32 128s14.38 32 32 32s32 14.38 32 32v256c0 35.25 28.75 64 64 64h176c8.875 0 16-7.125 16-15.1V480c0-17.62-14.38-32-32-32h-32l128-96v144c0 8.875 7.125 16 16 16h32c8.875 0 16-7.125 16-16V289.9c-10.25 2.625-20.88 4.5-32 4.5C386.2 294.4 334.5 250.4 322.6 192zM480 96h-64l-64-64v134.4c0 53 43 95.1 96 95.1s96-42.1 96-95.1V32L480 96zM408 176c-8.875 0-16-7.125-16-16s7.125-16 16-16s16 7.125 16 16S416.9 176 408 176zM488 176c-8.875 0-16-7.125-16-16s7.125-16 16-16s16 7.125 16 16S496.9 176 488 176z" />
+                </svg>
+              </div>
+
+              <div className="text-lg text-center mt-5 mb-12">Choose your main language</div>
+
+              <div className="p-2 w-full flex justify-center">
+                <div
+                  onClick={() => handleSubmitLanguage("English")}
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                >
+                  <div>
+                    <img
+                      className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
+                      src="/image/eng.png"
+                    />
+                    <div className="text-sm font-medium mb-5">English</div>
+                  </div>
+                </div>
+                <div
+                  onClick={() => handleSubmitLanguage("Vietnamese")}
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                >
+                  <img
+                    className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
+                    src="/image/vn.png"
+                  />
+                  <div className="text-sm font-medium mb-5">Vietnamese</div>
+                </div>
+                <div
+                  onClick={() => handleSubmitLanguage("Other")}
+                  className="relative w-24 h-24 bg-sky-100 mx-2 border-2 border-sky-100 hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg"
+                >
+                  <div className="text-sm font-medium mb-5">Other</div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            ""
+          )}
+
+          {sectionModal == 4 ? (
+            <div className="font-tapestry p-4">
+              <svg
+                onClick={() => {
+                  setSectionModal(--sectionModal);
+                }}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+                className="absolute top-5 left-5 w-7 h-7 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
+              >
+                <path d="M256 0C114.6 0 0 114.6 0 256c0 141.4 114.6 256 256 256s256-114.6 256-256C512 114.6 397.4 0 256 0zM384 288H205.3l49.38 49.38c12.5 12.5 12.5 32.75 0 45.25s-32.75 12.5-45.25 0L105.4 278.6C97.4 270.7 96 260.9 96 256c0-4.883 1.391-14.66 9.398-22.65l103.1-103.1c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25L205.3 224H384c17.69 0 32 14.33 32 32S401.7 288 384 288z" />
+              </svg>
+              <div className="text-2xl text-center flex justify-center font-semibold mt-5">
+                Welcome To Tutor Cat
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 576 512"
+                  className="h-5 w-5 fill-blue-900"
+                >
+                  <path d="M322.6 192C302.4 192 215.8 194 160 278V192c0-53-43-96-96-96C46.38 96 32 110.4 32 128s14.38 32 32 32s32 14.38 32 32v256c0 35.25 28.75 64 64 64h176c8.875 0 16-7.125 16-15.1V480c0-17.62-14.38-32-32-32h-32l128-96v144c0 8.875 7.125 16 16 16h32c8.875 0 16-7.125 16-16V289.9c-10.25 2.625-20.88 4.5-32 4.5C386.2 294.4 334.5 250.4 322.6 192zM480 96h-64l-64-64v134.4c0 53 43 95.1 96 95.1s96-42.1 96-95.1V32L480 96zM408 176c-8.875 0-16-7.125-16-16s7.125-16 16-16s16 7.125 16 16S416.9 176 408 176zM488 176c-8.875 0-16-7.125-16-16s7.125-16 16-16s16 7.125 16 16S496.9 176 488 176z" />
+                </svg>
+              </div>
+
+              <div className="text-lg text-center mt-5 mb-12">
+                Choose your subjects
+                <p className="text-[12px] text-gray-400">You can choose more than one</p>
+              </div>
+
+              <div className="p-2 w-full flex flex-wrap justify-center">
+                <div
+                  onClick={() => handleAddProgrammingLanguage("C/C++")}
+                  className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
+                    programmingLanguages.includes("C/C++") ? "border-4 border-blue-900" : "border-sky-100"
+                  } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
+                >
+                  <div>
+                    <img
+                      className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
+                      src="/image/cpp.png"
+                    />
+                    <div className="text-sm font-medium mb-5">C/C++</div>
+                  </div>
+                </div>
+                <div
+                  onClick={() => handleAddProgrammingLanguage("Javascript")}
+                  className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
+                    programmingLanguages.includes("Javascript")
+                      ? "border-4 border-blue-900"
+                      : "border-sky-100"
+                  } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
+                >
+                  <img
+                    className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
+                    src="/image/js.ico"
+                  />
+                  <div className="text-sm font-medium mb-5">Javascript</div>
+                </div>
+                <div
+                  onClick={() => handleAddProgrammingLanguage("Python")}
+                  className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
+                    programmingLanguages.includes("Python") ? "border-4 border-blue-900" : "border-sky-100"
+                  } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
+                >
+                  <img
+                    className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
+                    src="/image/python.ico"
+                  />
+                  <div className="text-sm font-medium mb-5">Python</div>
+                </div>
+                <div
+                  onClick={() => handleAddProgrammingLanguage("HTML & CSS")}
+                  className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
+                    programmingLanguages.includes("HTML & CSS")
+                      ? "border-4 border-blue-900"
+                      : "border-sky-100"
+                  } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
+                >
+                  <img
+                    className="absolute top-[60%] right-[80%] mr-[-20px] h-5 w-5"
+                    src="/image/html.png"
+                  />
+                  <img
+                    className="absolute top-[60%] right-[40%] mr-[-20px] h-5 w-5"
+                    src="/image/css.png"
+                  />
+                  <div className="text-sm font-medium mb-5">HTML & CSS</div>
+                </div>
+                <div
+                  onClick={() => handleAddProgrammingLanguage("Other")}
+                  className={`relative mb-4 w-24 h-24 bg-sky-100 mx-2 border-2 ${
+                    programmingLanguages.includes("Other") ? "border-4 border-blue-900" : "border-sky-100"
+                  } hover:border-blue-900 flex items-center justify-center hover:cursor-pointer rounded-lg`}
+                >
+                  <div className="text-sm font-medium mb-5">Other</div>
+                </div>
+                <svg
+                onClick={handleSubmitProgrammingLanguages}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+                className="absolute bottom-5 right-5 w-7 h-7 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer rotate-180"
+              >
+                <path d="M256 0C114.6 0 0 114.6 0 256c0 141.4 114.6 256 256 256s256-114.6 256-256C512 114.6 397.4 0 256 0zM384 288H205.3l49.38 49.38c12.5 12.5 12.5 32.75 0 45.25s-32.75 12.5-45.25 0L105.4 278.6C97.4 270.7 96 260.9 96 256c0-4.883 1.391-14.66 9.398-22.65l103.1-103.1c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25L205.3 224H384c17.69 0 32 14.33 32 32S401.7 288 384 288z" />
+              </svg>
+              </div>
+            </div>
+          ) : (
+            ""
+          )}
+
+          {sectionModal == 5 ? (
+            <div className="font-tapestry p-4">
+              <svg
+                onClick={() => {
+                  setSectionModal(--sectionModal);
+                }}
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 512"
+                className="absolute top-5 left-5 w-7 h-7 fill-sky-500 hover:fill-sky-600 hover:cursor-pointer"
               >
                 <path d="M256 0C114.6 0 0 114.6 0 256c0 141.4 114.6 256 256 256s256-114.6 256-256C512 114.6 397.4 0 256 0zM384 288H205.3l49.38 49.38c12.5 12.5 12.5 32.75 0 45.25s-32.75 12.5-45.25 0L105.4 278.6C97.4 270.7 96 260.9 96 256c0-4.883 1.391-14.66 9.398-22.65l103.1-103.1c12.5-12.5 32.75-12.5 45.25 0s12.5 32.75 0 45.25L205.3 224H384c17.69 0 32 14.33 32 32S401.7 288 384 288z" />
               </svg>

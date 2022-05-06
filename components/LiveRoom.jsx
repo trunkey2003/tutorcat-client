@@ -4,8 +4,10 @@ import { io } from "socket.io-client";
 import Loading from "./Loading";
 import { Axios } from "../config/axios";
 import Error from "./Error";
-// import ErrorPermissionMicroHost from './ErrorPermissionMicroHost';
-// import ErrorPermissionCameraHost from './ErrorPermissionCameraHost';
+import ErrorPermissionMicroHost from './ErrorPermissionMicroHost';
+import ErrorPermissionCameraHost from './ErrorPermissionCameraHost';
+import ErrorPermissionMicroJoiner from './ErrorPermissionMicroJoiner';
+import ErrorPermissionCameraJoiner from "./ErrorPermissionCameraJoiner";
 import ChatBreak from "./chat/ChatBreak";
 import RemoteChat from "./chat/RemoteChat";
 import MeChat from "./chat/MeChat";
@@ -25,6 +27,7 @@ export default function LiveRoom({ roomID }) {
   const [remoteCallScreenOff, setRemoteCallScreenOff] = useState(null);
   const [myCallScreenOff, setMyCallScreenOff] = useState(true);
   const [error, setError] = useState('');
+  const [missingPermissions, setMissingPermissions] = useState([]);
   const [classChatBox, setClassChatBox] = useState('w-0 hidden');
   const [classChatToogle, setClassChatToogle] = useState('left-0');
   const [messages, setMessages] = useState([]);
@@ -112,9 +115,6 @@ export default function LiveRoom({ roomID }) {
     // return () => socket.disconnect();
   }, [alerts, messages, remoteSocketID]);
 
-  useEffect(() => {
-    //Request người dùng cho phép mic ngay khi vào phòng
-  }, [error]);
 
   const handleAddChatBreak = (content) => {
     setMessages([...messages, { from: 'me', content: content, type: 'chat break' }]);
@@ -326,7 +326,8 @@ export default function LiveRoom({ roomID }) {
       setMyCallScreenOff(false);
 
       // Nếu chưa có ai vào
-      if (!myMediaConnection.current) {
+      if (!myMediaConnection.current && !remoteSocketID) {
+        console.log("Lọt vào đây");
         return;
       }
 
@@ -664,6 +665,10 @@ export default function LiveRoom({ roomID }) {
   return (
     <>
       {loading ? <Loading /> : ""}
+      {/* {(error == 'permission micro host')? <ErrorPermissionMicroHost/> : ''} */}
+      {/* {(error == 'permission camera host')? <ErrorPermissionCameraHost/> : ''} */}
+      {/* {(error == 'permission micro joiner')? <ErrorPermissionMicroJoiner/> : ''} */}
+      {/* {(error == 'permission camera joiner')? <ErrorPermissionCameraJoiner/> : ''} */}
       <div className="fixed right-4 top-4 z-[1000] max-h-screen overflow-auto" role="alert">
         {alerts.length ?
           alerts.map((alert, index) => <div key={index} className="min-w-[350px] max-w-sm bg-sky-100 border-l-4 border-sky-500 text-sky-700 p-4 mb-4 relative">
