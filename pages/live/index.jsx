@@ -544,7 +544,7 @@ export default function Index() {
                   <div>
                     <img
                       className="absolute top-[60%] right-[50%] mr-[-10px] h-5 w-5"
-                      src="/image/cpp.png"
+                      src="/image/cpp.ico"
                     />
                     <div className="text-sm font-medium mb-5">C/C++</div>
                   </div>
