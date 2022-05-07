@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback} from "react";
 import Peer from "peerjs";
 import { io } from "socket.io-client";
 import Loading from "./Loading";
@@ -12,6 +12,8 @@ import ChatBreak from "./chat/ChatBreak";
 import RemoteChat from "./chat/RemoteChat";
 import MeChat from "./chat/MeChat";
 import ChatFooter from "./chat/ChatFooter";
+import OutputCodeFromMe from "./OutputCodeFromMe";
+import OutputCodeFromRemote from "./OutputCodeFromRemote";
 
 const socket = io(`${process.env.NEXT_PUBLIC_SERVER_URL}/room`);
 var created;
@@ -26,17 +28,18 @@ export default function LiveRoom({ roomID }) {
 
   const [alerts, setAlerts] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const [myName, setMyName] = useState('');
-  const [remoteSocketID, setRemoteSocketID] = useState('');
+  const [myName, setMyName] = useState("");
+  const [remoteSocketID, setRemoteSocketID] = useState("");
 
   const [missingPermissions, setMissingPermissions] = useState([]);
 
-  const [classChatBox, setClassChatBox] = useState('w-0 hidden');
-  const [classChatToogle, setClassChatToogle] = useState('left-0');
+  const [classChatBox, setClassChatBox] = useState("w-0 hidden");
+  const [classChatToogle, setClassChatToogle] = useState("left-0");
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const myCallTrack = useRef();
   const myCallStream = useRef();
@@ -48,111 +51,132 @@ export default function LiveRoom({ roomID }) {
   const remoteVideo = useRef();
   const alertsRef = useRef([]);
 
-  // useEffect(() => {
-  //   setLoading(true);
-  //   socket.on("me", (socketID) => {
-  //     Axios.put(`/api/room/join/${roomID}/${socketID}`)
-  //       .then(({ data }) => {
-  //         setMyName(data.userName1);
-  //         created = data.userCount == 1 ? false : true;
-  //         if (!created) {
-  //           handleCreateRoom();
+  useEffect(() => {
+    setLoading(true);
+    socket.on("me", (socketID) => {
+      Axios.put(`/api/room/join/${roomID}/${socketID}`)
+        .then(({ data }) => {
+          setMyName(data.userName1);
+          created = data.userCount == 1 ? false : true;
+          if (!created) {
+            handleCreateRoom();
+          } else {
+            handleJoinRoom(socketID);
+            handleAddChatBreak("You have joined room");
+          }
 
-  //         } else {
-  //           handleJoinRoom(socketID);
-  //           handleAddChatBreak('You have joined room');
-  //         }
+          socket.on("remote turned webcam off", () => {
+            setRemoteCallScreenOff(true);
+            handleRemoteCallScreen(null);
+          });
 
-  //         socket.on("remote turn webcam off", () => {
-  //           setRemoteCallScreenOff(true);
-  //           handleRemoteCallScreen(null);
-  //         });
+          socket.on("remote turned webcam on", () => {
+            setRemoteCallScreenOff(false);
+          });
 
-  //         socket.on("remote turn webcam on", () => {
-  //           setRemoteCallScreenOff(false);
-  //         });
+          socket.on("remote started share screen", () => {
+            setRemoteCallScreenOff(false);
+          });
 
-  //         socket.on("remote start share screen", () => {
-  //           setRemoteCallScreenOff(false);
-  //         });
+          socket.on("remote stoped share screen", () => {
+            setRemoteCallScreenOff(true);
+            handleRemoteCallScreen(null);
+          });
 
-  //         socket.on("remote stop share screen", () => {
-  //           setRemoteCallScreenOff(true);
-  //           handleRemoteCallScreen(null);
-  //         });
+          setLoading(false);
+        })
+        .catch((err) => {
+          setError("404");
+          setLoading(false);
+        });
+    });
+  }, []);
 
-  //         setLoading(false);
-  //       })
-  //       .catch((err) => {
-  //         setError('404');
-  //         setLoading(false);
-  //       });
-  //   });
-  // }, []);
+  useEffect(() =>{
+    if (classChatBox == 'show-chat-box' && unreadMessages > 0){
+      setUnreadMessages(0);
+    }
+  }, [classChatBox]);
 
-  // useEffect(() => {
-  //   if (!created) {
-  //     socket.on("someone join room", (id) => {
-  //       setRemoteSocketID(id);
-  //       myMediaConnection.current = myPeer.current.call('joiner-' + roomID, myCallStream.current);
-  //       myMediaConnection.current?.on("stream", (stream) => { //Khong biet tai sao co luc myMediaConnection.currunt lai la undefined o day
-  //         handleRemoteCallScreen(stream);
-  //       });
-  //       setRemoteCallScreenOff(true);
-  //       handleAddAlert("New attendance !", id + " has joined your room");
-  //     });
+  useEffect(() => {
+    if (!created) {
+      socket.on("remote join room", (id) => {
+        setRemoteSocketID(id);
+        myMediaConnection.current = myPeer.current.call("joiner-" + roomID, myCallStream.current);
+        myMediaConnection.current?.on("stream", (stream) => {
+          //4/5/2022 Khong biet tai sao co luc myMediaConnection.currunt lai la undefined o day
+          //7/5/2022 Co ve la do socket chưa dc re-render khi bỏ trong useEffect với []
+          handleRemoteCallScreen(stream);
+        });
+        setRemoteCallScreenOff(true);
+        handleAddAlert("New attendance !", id + " has joined your room");
+      });
 
-  //     socket.on("someone leave call", () => {
-  //       myMediaConnection.current?.close();
-  //       myMediaConnection.current = null;
-  //       setRemoteCallScreenOff(null);
-  //       handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
-  //       setRemoteSocketID('');
-  //     });
-  //   };
+      socket.on("remote leave call", () => {
+        myMediaConnection.current?.close();
+        myMediaConnection.current = null;
+        setRemoteCallScreenOff(null);
+        handleAddAlert("Attendance left !", remoteSocketID + " has left your room");
+        setRemoteSocketID("");
+      });
+    }
 
-  //   socket.on("someone chat", (message) => {
-  //     handleAddMessageFromRemote(message);
-  //   });
+    socket.on("remote chatted", (message) => {
+      handleAddChatFromRemote(message);
+      handleRemoteNewMessage();
+    });
 
-  //   socket.on("new chat break", (content) => {
-  //     handleAddChatBreak(content);
-  //   })
-  //   // return () => socket.disconnect();
-  // }, [alerts, messages, remoteSocketID]);
+    socket.on("remote sent code", (message) => {
+      handleAddCodeFromRemote(message);
+      handleRemoteNewMessage();
+    });
 
-  const handleOpenInputCodeModal = () =>{
-    setShowInputCodeModal(true);
-  };
+    socket.on("new chat break", (content) => {
+      handleAddChatBreak(content);
+    });
+    // return () => socket.disconnect();
+  }, [alerts, messages, remoteSocketID, unreadMessages, classChatBox, socket]);
 
-  const handleCloseInputCodeModal = () =>{
-    setShowInputCodeModal(false);
-  };
+  const handleRemoteNewMessage = useCallback(() =>{
+    console.log(messages);
+    if (classChatBox == 'hide-chat-box' || classChatBox == 'w-0 hidden'){
+      setUnreadMessages(unreadMessages + 1);
+    }
+  }, [unreadMessages, classChatBox]);
 
-  const handleAddChatBreak = (content) => {
-    setMessages([...messages, { from: 'me', content: content, type: 'chat break' }]);
-  };
+  const handleAddCodeFromMe = useCallback((content) => {
+    setMessages([...messages, { from: "me", content: content, type: "output code" }]);
+    socket.emit("me send code", { content: content, roomID: roomID });
+  }, [messages]);
 
-  const handleAddMessageFromMe = (content) => {
-    setMessages([...messages, { from: 'me', content: content }]);
+  const handleAddCodeFromRemote = useCallback((content) => {
+    setMessages([...messages, { from: "remote", content: content, type: "output code" }]);
+  }, [messages]);
+
+  const handleAddChatBreak = useCallback((content) => {
+    setMessages([...messages, { content: content, type: "chat break" }]);
+  }, [messages]);
+
+  const handleAddChatFromMe = useCallback((content) => {
+    setMessages([...messages, { from: "me", content: content, type: "chat" }]);
     socket.emit("me chat", { content: content, roomID: roomID });
-  }
+  }, [messages]);
 
-  const handleAddMessageFromRemote = (content) => {
-    setMessages([...messages, { from: 'remote', content: content }]);
-  }
+  const handleAddChatFromRemote = useCallback((content) => {
+    setMessages([...messages, { from: "remote", content: content, type: "chat" }]);
+  }, [messages]);
 
-  const handleAddAlert = (title, content) => {
+  const handleAddAlert = useCallback((title, content) => {
     setAlerts([...alerts, { title: title, content: content }]);
-  };
+  }, [alerts]);
 
-  const handleDeleteAlert = (index) => {
+  const handleDeleteAlert = useCallback((index) => {
     const _alerts = [...alerts];
     _alerts.splice(index, 1);
     alertsRef.current = [..._alerts]; //Không biết tại sao dùng alersRef thì lại ko dc @_@
     console.log(alertsRef.current);
     setAlerts(_alerts);
-  };
+  }, [alerts]);
 
   const handleMyCallScreen = (stream) => {
     myVideo.current.srcObject = stream;
@@ -301,58 +325,64 @@ export default function LiveRoom({ roomID }) {
       setShareAudio(true);
       return;
     }
-    navigator.getUserMedia({ video: shareCam, audio: !shareAudio }, (stream) => {
-      myCallStream.current = stream;
+    navigator.getUserMedia(
+      { video: shareCam, audio: !shareAudio },
+      (stream) => {
+        myCallStream.current = stream;
 
-      myWebcamStream.current?.getTracks().forEach((track) => {
-        if (track != myCallTrack.current) track.stop();
-      });
-      stream.getTracks().forEach((track) => myWebcamStream.current?.addTrack(track));
-      //nếu chưa có ai vào
-      if (!myMediaConnection.current) {
+        myWebcamStream.current?.getTracks().forEach((track) => {
+          if (track != myCallTrack.current) track.stop();
+        });
+        stream.getTracks().forEach((track) => myWebcamStream.current?.addTrack(track));
+        //nếu chưa có ai vào
+        if (!myMediaConnection.current) {
+          setShareAudio(true);
+          return;
+        }
+
+        if (created) myPeer.current.call(roomID, stream);
+        if (!created) myPeer.current.call("joiner-" + roomID, stream);
+        // if (created && myCallTrack.current?.enabled) myPeer.current.call(roomID, new MediaStream(myCallTrack.current));
+        // if (!created && myCallTrack.current?.enabled) myPeer.current.call("joiner-" + roomID, new MediaStream(myCallTrack.current));
         setShareAudio(true);
-        return;
-      }
-
-      if (created) myPeer.current.call(roomID, stream);
-      if (!created) myPeer.current.call("joiner-" + roomID, stream);
-      // if (created && myCallTrack.current?.enabled) myPeer.current.call(roomID, new MediaStream(myCallTrack.current));
-      // if (!created && myCallTrack.current?.enabled) myPeer.current.call("joiner-" + roomID, new MediaStream(myCallTrack.current));
-      setShareAudio(true);
-    },
+      },
       (err) => {
         setShareAudio(false);
-      });
+      }
+    );
     // myVideo.current.muted = false;
   };
 
   const handleStartWebcam = () => {
-    // if (!myMediaConnection.current) return; 
+    // if (!myMediaConnection.current) return;
     if (sharingScreen) return;
     myWebcamStream.current?.getTracks().forEach((track) => track.stop());
-    navigator.getUserMedia({ video: !shareCam, audio: shareAudio }, (stream) => {
-      handleMyCallScreen(stream);
-      myCallStream.current = stream;
-      myWebcamStream.current = stream;
-      myCallTrack.current = stream.getTracks().filter((track) => track.kind == "video")[0];
-      setShareCam(true);
-      setMyCallScreenOff(false);
+    navigator.getUserMedia(
+      { video: !shareCam, audio: shareAudio },
+      (stream) => {
+        handleMyCallScreen(stream);
+        myCallStream.current = stream;
+        myWebcamStream.current = stream;
+        myCallTrack.current = stream.getTracks().filter((track) => track.kind == "video")[0];
+        setShareCam(true);
+        setMyCallScreenOff(false);
 
-      // Nếu chưa có ai vào
-      if (!myMediaConnection.current && !remoteSocketID) {
-        console.log("Lọt vào đây");
-        return;
-      }
+        // Nếu chưa có ai vào
+        if (!myMediaConnection.current && !remoteSocketID) {
+          console.log("Lọt vào đây");
+          return;
+        }
 
-      //Nếu là người tạo phòng và đã có người vào thì đưa stream mới có video cho người đó
-      if (created) myPeer.current.call(roomID, stream);
-      else myPeer.current.call("joiner-" + roomID, stream);
+        //Nếu là người tạo phòng và đã có người vào thì đưa stream mới có video cho người đó
+        if (created) myPeer.current.call(roomID, stream);
+        else myPeer.current.call("joiner-" + roomID, stream);
 
-      socket.emit("turn webcam on", roomID);
-    },
+        socket.emit("turn webcam on", roomID);
+      },
       (err) => {
         setShareCam(false);
-      });
+      }
+    );
   };
 
   const handleStopWebcam = () => {
@@ -464,7 +494,7 @@ export default function LiveRoom({ roomID }) {
 
     myPeer.current.on("open", (id) => {
       navigator.getUserMedia(
-        { video: true, audio: true }, //Phải bật video của người join vào lúc mới vào, mới nhận dc video của người gọi :/ có vẻ là cơ chế của PeerJS hoặc là luật của trình duyệt. 
+        { video: true, audio: true }, //Phải bật video của người join vào lúc mới vào, mới nhận dc video của người gọi :/ có vẻ là cơ chế của PeerJS hoặc là luật của trình duyệt.
         (myStream) => {
           handleMyCallScreen(myStream);
           myWebcamStream.current = myStream;
@@ -472,7 +502,7 @@ export default function LiveRoom({ roomID }) {
           handleAddAlert("Welcome " + socketID + " !!!", "you have joined room");
           socket.on("end call", () => {
             myMediaConnection.current?.close();
-            window.location.href = window.location.origin + '/live';
+            window.location.href = window.location.origin + "/live";
           });
           // myStream.getTracks().forEach((track) => {if (track.kind == 'video') track.stop()});
           // const call = myPeer.current.call(roomID, myStream);
@@ -501,7 +531,7 @@ export default function LiveRoom({ roomID }) {
           handleAddAlert("Welcome " + socketID + " !!!", "you have joined room");
           socket.on("end call", () => {
             myMediaConnection.current?.close();
-            window.location.href = window.location.origin + '/live';
+            window.location.href = window.location.origin + "/live";
           });
         }
       );
@@ -529,11 +559,14 @@ export default function LiveRoom({ roomID }) {
   };
 
   const handleClassChatBox = () => {
-    const _classChatBox = (classChatBox == 'show-chat-box') ? 'hide-chat-box' : 'show-chat-box';
-    const _classChatToogle = (classChatToogle == 'move-out-chat-toogle-button') ? 'move-in-chat-toogle-button' : 'move-out-chat-toogle-button';
+    const _classChatBox = classChatBox == "show-chat-box" ? "hide-chat-box" : "show-chat-box";
+    const _classChatToogle =
+      classChatToogle == "move-out-chat-toogle-button"
+        ? "move-in-chat-toogle-button"
+        : "move-out-chat-toogle-button";
     setClassChatBox(_classChatBox);
     setClassChatToogle(_classChatToogle);
-  }
+  };
 
   const MuteButton = () => {
     return (
@@ -663,7 +696,7 @@ export default function LiveRoom({ roomID }) {
       );
     if (remoteCallScreenOff == null && !created)
       return (
-        <div className="fixed left-[10vw] top-0 w-[80vw] h-[45vw] animate-pulse bg-gray-200 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
+        <div className="fixed left-[10vw] top-0 w-[80vw] h-[45vw] animate-pulse bg-gray-700 text-blue-300 object-cover border-2 border-cyan-200 z-10 text-black flex justify-center items-center text-2xl">
           Waiting another user to join...
         </div>
       );
@@ -673,7 +706,7 @@ export default function LiveRoom({ roomID }) {
     if (remoteCallScreenOff == false) return "";
   };
 
-  if (error == '404') return <Error />;
+  if (error == "404") return <Error />;
 
   return (
     <>
@@ -683,40 +716,95 @@ export default function LiveRoom({ roomID }) {
       {/* {(error == 'permission micro joiner')? <ErrorPermissionMicroJoiner/> : ''} */}
       {/* {(error == 'permission camera joiner')? <ErrorPermissionCameraJoiner/> : ''} */}
       <div className="fixed right-4 top-4 z-[1000] max-h-screen overflow-auto" role="alert">
-        {alerts.length ?
-          alerts.map((alert, index) => <div key={index} className="min-w-[350px] max-w-sm bg-sky-100 border-l-4 border-sky-500 text-sky-700 p-4 mb-4 relative">
-            <p className="font-bold">{alert.title}</p>
-            <span onClick={() => handleDeleteAlert(index)} className="absolute top-0 right-0 px-4 py-3">
-              <svg className="fill-sky-700 h-6 w-6" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" /></svg>
-            </span>
-            <p>{alert.content}</p>
-          </div>)
-          : ''}
+        {alerts.length
+          ? alerts.map((alert, index) => (
+              <div
+                key={index}
+                className="min-w-[350px] max-w-sm bg-sky-100 border-l-4 border-sky-500 text-sky-700 p-4 mb-4 relative"
+              >
+                <p className="font-bold">{alert.title}</p>
+                <span
+                  onClick={() => handleDeleteAlert(index)}
+                  className="absolute top-0 right-0 px-4 py-3"
+                >
+                  <svg
+                    className="fill-sky-700 h-6 w-6"
+                    role="button"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                  >
+                    <title>Close</title>
+                    <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z" />
+                  </svg>
+                </span>
+                <p>{alert.content}</p>
+              </div>
+            ))
+          : ""}
       </div>
 
-      <div onClick={handleClassChatBox} className={`fixed bottom-[330px] flex justify-center items-center w-[40px] h-[60px] bg-sky-900 z-[1001] rounded-r-xl ${classChatToogle} hover:cursor-pointer hover:opacity-80`}>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" className="w-7 w-7 fill-white">
+      <div
+        onClick={handleClassChatBox}
+        className={`fixed bottom-[330px] flex justify-center items-center w-[40px] h-[60px] bg-sky-900 z-[1001] rounded-r-xl ${classChatToogle} hover:cursor-pointer hover:opacity-80`}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 640 512"
+          className="w-7 w-7 fill-white"
+        >
           <path d="M416 176C416 78.8 322.9 0 208 0S0 78.8 0 176c0 39.57 15.62 75.96 41.67 105.4c-16.39 32.76-39.23 57.32-39.59 57.68c-2.1 2.205-2.67 5.475-1.441 8.354C1.9 350.3 4.602 352 7.66 352c38.35 0 70.76-11.12 95.74-24.04C134.2 343.1 169.8 352 208 352C322.9 352 416 273.2 416 176zM599.6 443.7C624.8 413.9 640 376.6 640 336C640 238.8 554 160 448 160c-.3145 0-.6191 .041-.9336 .043C447.5 165.3 448 170.6 448 176c0 98.62-79.68 181.2-186.1 202.5C282.7 455.1 357.1 512 448 512c33.69 0 65.32-8.008 92.85-21.98C565.2 502 596.1 512 632.3 512c3.059 0 5.76-1.725 7.02-4.605c1.229-2.879 .6582-6.148-1.441-8.354C637.6 498.7 615.9 475.3 599.6 443.7z" />
         </svg>
+        {(unreadMessages > 0)? <div className="absolute top-[-6px] right-[-6px] w-5 h-5 rounded-full flex justify-center items-center bg-red-600 text-white"></div> : ''}
       </div>
 
-      {<div className={`fixed left-0 bottom-10 h-[350px] bg-gray-900 bg-opacity-70 z-[1000] ${classChatBox} overflow-hidden`}>
-        {<div className="p-4 max-h-[310px] overflow-x-auto">
-          {(messages.length) ?
-            messages.map((message, index) =>
-              (message.from == 'me' && message.type != 'chat break') ?
-                <div key={index}><MeChat content={message.content} /></div>
-                :
-                (message.type == 'chat break') ?
-                  <div key={index}><ChatBreak content={message.content} /></div>
-                  :
-                  <div key={index}><RemoteChat content={message.content} /></div>
-            )
-            : ''
+      {
+        <div
+          className={`fixed left-0 bottom-10 h-[350px] bg-gray-900 bg-opacity-70 z-[1000] ${classChatBox} overflow-hidden`}
+        >
+          {
+            <div className="p-4 max-h-[310px] overflow-x-auto">
+              {messages.length
+                ? messages.map((message, index) => {
+                    if (message.type == "chat break")
+                      return (
+                        <div key={index}>
+                          <ChatBreak content={message.content} />
+                        </div>
+                      );
+                    else if (message.from == "me" && message.type == "chat")
+                      return (
+                        <div key={index}>
+                          <MeChat content={message.content} />
+                        </div>
+                      );
+                    else if (message.from == "remote" && message.type == "chat")
+                      return (
+                        <div key={index}>
+                          <RemoteChat content={message.content} />
+                        </div>
+                      );
+                    else if (message.from == "me" && message.type == "output code")
+                      return (
+                        <div key={index}>
+                          <OutputCodeFromMe content={message.content} />
+                        </div>
+                      );
+                    else if (message.from == "remote" && message.type == "output code")
+                      return (
+                        <div key={index}>
+                          <OutputCodeFromRemote content={message.content} />
+                        </div>
+                      );
+                  })
+                : ""}
+            </div>
           }
-        </div>}
-        <ChatFooter handleAddMessageFromMe={handleAddMessageFromMe} />
-      </div>}
+          <ChatFooter
+            handleAddChatFromMe={handleAddChatFromMe}
+            handleAddCodeFromMe={handleAddCodeFromMe}
+          />
+        </div>
+      }
 
       <div className="bg-black w-full min-h-screen">
         <video
@@ -755,22 +843,22 @@ export default function LiveRoom({ roomID }) {
         ::-webkit-scrollbar {
           width: 10px;
         }
-        
+
         /* Track */
         ::-webkit-scrollbar-track {
-          box-shadow: inset 0 0 5px grey; 
+          box-shadow: inset 0 0 5px grey;
           border-radius: 10px;
         }
-         
+
         /* Handle */
         ::-webkit-scrollbar-thumb {
-          background: #4195a6; 
+          background: #4195a6;
           border-radius: 10px;
         }
-        
+
         /* Handle on hover */
         ::-webkit-scrollbar-thumb:hover {
-          background: #2c6696; 
+          background: #2c6696;
         }
       `}</style>
     </>
