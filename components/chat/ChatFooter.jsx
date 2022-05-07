@@ -2,6 +2,7 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import Modal from "@mui/material/Modal";
 import Editor from "@monaco-editor/react";
+import { Axios } from "../../config/axios";
 
 const style = {
   position: "absolute",
@@ -17,15 +18,20 @@ const style = {
 
 export default function ChatFooter({ handleAddMessageFromMe }) {
   const [showInputCodeModal, setShowInputCodeModal] = useState(false);
+  const [sourceCodeInput, setSourceCodeInput] = useState('');
   const [runCodeLoading, setRunCodeLoading] = useState(false);
   const [inputForCode, setInputForCode] = useState('');
   const [outputForCode, setOutputForCode] = useState('');
+  const [invalidCode, setInvalidCode] = useState(false);
   const [language, setLanguage] = useState("javascript");
   const [theme, setTheme] = useState("vs-dark");
   const [showOutputCodeModal, setShowOutputCodeModal] = useState(false);
   const [message, setMessage] = useState("");
   const [codeActive, setCodeActive] = useState(false);
 
+  const handleSourceCodeInput = (value) =>{
+    setSourceCodeInput(value);
+  }
   const handleLanguage = (newLanguage) =>{
     if (language == newLanguage) return;
     setLanguage(newLanguage);
@@ -50,9 +56,37 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
 
   const handleRunCode = () => {
     setRunCodeLoading(true);
-    setTimeout(() => {
+    const body = {
+      source : sourceCodeInput,
+      input : inputForCode,
+      language : language, 
+    };
+
+    Axios.post('/api/compiler/submission/create-and-get-result', body)
+    .then(({data}) =>{
+      if (data.error) 
+      {
+        setInvalidCode(true);
+        setOutputForCode(`status code: ${data.status.code} - ${data.status.name} \n${data.error}`);
+        return;
+      }
+
+      if (data.output){
+        setInvalidCode(false);
+        setOutputForCode(data.output);
+        return;
+      }
+      
+      setInvalidCode(false);
+      setOutputForCode('');
+    })
+    .catch((err) =>{
+      setInvalidCode(true);
+      if (err.response) setOutputForCode(err.response.data); else setOutputForCode('Internal server error');
+    })
+    .finally(() =>{
       setRunCodeLoading(false);
-    }, 3000);
+    });
   }
 
   const handleSendMessage = () => {
@@ -212,7 +246,7 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                       } hover:grayscale-0 hover:cursor-pointer rounded-lg`}
                     src="/image/js.ico"
                   ></img>
-                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[14px] left-4 z-10">
+                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[20px] left-4 z-10">
                     Javascript
                   </span>
                 </div>
@@ -223,7 +257,7 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                       } hover:grayscale-0 hover:cursor-pointer rounded-lg`}
                     src="/image/cpp.ico"
                   ></img>
-                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[14px] left-4 z-10">
+                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[20px] left-4 z-10">
                     C++
                   </span>
                 </div>
@@ -234,7 +268,7 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                       } hover:grayscale-0 hover:cursor-pointer rounded-lg`}
                     src="/image/python.ico"
                   ></img>
-                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[14px] left-4 z-10">
+                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[20px] left-4 z-10">
                     Python
                   </span>
                 </div>
@@ -245,7 +279,7 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                       } hover:grayscale-0 hover:cursor-pointer rounded-lg`}
                     src="/image/java.ico"
                   ></img>
-                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[14px] left-4 z-10">
+                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[20px] left-4 z-10">
                     Java
                   </span>
                 </div>
@@ -256,13 +290,13 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                       } hover:grayscale-0 hover:cursor-pointer rounded-lg`}
                     src="/image/csharp.ico"
                   ></img>
-                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[14px] left-4 z-10">
+                  <span className="span-hover bg-black rounded-lg bg-gray-900 text-white px-2 text-[12px] absolute top-[20px] left-4 z-10">
                     C#
                   </span>
                 </div>
                 <div className="ml-auto">
-                  <input type="checkbox" className="checkbox" id="checkbox" onChange={handleTheme} />
-                  <label for="checkbox" className="label">
+                  <input type="checkbox" className="checkbox hover:cursor-pointer hover:opacity-80" id="checkbox" onChange={handleTheme} />
+                  <label htmlFor="checkbox" className="label hover:cursor-pointer hover:opacity-80">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-4 h-4 fill-yellow-500 ml-[2px] rounded-full">
                       <path d="M256 159.1c-53.02 0-95.1 42.98-95.1 95.1S202.1 351.1 256 351.1s95.1-42.98 95.1-95.1S309 159.1 256 159.1zM509.3 347L446.1 255.1l63.15-91.01c6.332-9.125 1.104-21.74-9.826-23.72l-109-19.7l-19.7-109c-1.975-10.93-14.59-16.16-23.72-9.824L256 65.89L164.1 2.736c-9.125-6.332-21.74-1.107-23.72 9.824L121.6 121.6L12.56 141.3C1.633 143.2-3.596 155.9 2.736 164.1L65.89 256l-63.15 91.01c-6.332 9.125-1.105 21.74 9.824 23.72l109 19.7l19.7 109c1.975 10.93 14.59 16.16 23.72 9.824L256 446.1l91.01 63.15c9.127 6.334 21.75 1.107 23.72-9.822l19.7-109l109-19.7C510.4 368.8 515.6 356.1 509.3 347zM256 383.1c-70.69 0-127.1-57.31-127.1-127.1c0-70.69 57.31-127.1 127.1-127.1s127.1 57.3 127.1 127.1C383.1 326.7 326.7 383.1 256 383.1z" />
                     </svg>
@@ -278,13 +312,15 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
                   height="100%"
                   width="100%"
                   theme={theme}
+                  value={sourceCodeInput}
                   language={language}
                   defaultValue=""
+                  onChange={handleSourceCodeInput}
                 />
               </div>
             </div>
             <div className="w-[40%] m-[5vh]">
-              <textarea className={`w-full min-h-[10vh] h-[28vh] max-h-[28vh] ${(theme == 'vs-dark') ? 'bg-stone-900 text-white' : 'bg-gray-100 text-black'} resize-y rounded-md p-2 font-mono`} placeholder="input" value={inputForCode} onChange={handleInputInputForCode}></textarea>
+              <textarea className={`w-full min-h-[10vh] h-[28vh] max-h-[28vh] overflow-auto ${(theme == 'vs-dark') ? 'bg-stone-900 text-white' : 'bg-gray-100 text-black'} resize-y rounded-md p-2 font-mono`} placeholder="input" value={inputForCode} onChange={handleInputInputForCode}></textarea>
               <div className="h-[8vh] flex justify-end items-center">
                 <div className="relative ">
                   <button className="hover-span w-8 h-8 rounded-lg bg-sky-500 text-white text-sm font-medium flex items-center justify-center mr-2" onClick={handleClearInputInputForCode}>
@@ -321,7 +357,7 @@ export default function ChatFooter({ handleAddMessageFromMe }) {
 
                 }
               </div>
-              <textarea className={`w-full min-h-[10vh] h-[28vh] max-h-[28vh] ${(theme == 'vs-dark') ? 'bg-stone-900 text-white' : 'bg-gray-100 text-black'} resize-y rounded-md p-2 font-mono focus:outline-none`} type="text" disabled placeholder="output" value={outputForCode}></textarea>
+              <textarea className={`w-full min-h-[10vh] h-[28vh] max-h-[28vh] overflow-auto ${(theme == 'vs-dark') ? 'bg-stone-900 text-white' : 'bg-gray-100 text-black'} ${(invalidCode)? 'text-red-500' : 'text-white'} resize-y rounded-md p-2 font-mono focus:outline-none`} type="text" disabled placeholder="output" value={outputForCode}></textarea>
             </div>
           </div>
         </Box>
