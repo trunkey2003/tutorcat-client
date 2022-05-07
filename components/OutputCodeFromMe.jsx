@@ -1,7 +1,7 @@
 import {useState} from "react";
 import OutputCodeModal from "./OutputCodeModal";
 
-export default function OutputCodeFromMe({ content }) {
+export default function OutputCodeFromMe({ content, handleAddCodeFromMe}) {
     const [showInputCodeModal, setShowInputCodeModal] = useState(false);
 
     const handleCloseInputCodeModal = () => {
@@ -21,6 +21,7 @@ export default function OutputCodeFromMe({ content }) {
                 <img src="/image/my-profile-pic.jpg" className="w-10 h-10 rounded-full"></img>
             </div>
             <OutputCodeModal
+                handleAddCodeFromMe={handleAddCodeFromMe}
                 showInputCodeModal={showInputCodeModal}
                 handleCloseInputCodeModal={handleCloseInputCodeModal}
                 sentSourceCode={content.sentSourceCode}

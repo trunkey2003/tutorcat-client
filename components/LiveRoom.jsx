@@ -786,13 +786,13 @@ export default function LiveRoom({ roomID }) {
                     else if (message.from == "me" && message.type == "output code")
                       return (
                         <div key={index}>
-                          <OutputCodeFromMe content={message.content} />
+                          <OutputCodeFromMe content={message.content} handleAddCodeFromMe={handleAddCodeFromMe}/>
                         </div>
                       );
                     else if (message.from == "remote" && message.type == "output code")
                       return (
                         <div key={index}>
-                          <OutputCodeFromRemote content={message.content} />
+                          <OutputCodeFromRemote content={message.content} handleAddCodeFromMe={handleAddCodeFromMe}/>
                         </div>
                       );
                   })

@@ -17,6 +17,7 @@ const style = {
 };
 
 export default function OutputCodeModal({
+  handleAddCodeFromMe,
   showInputCodeModal,
   handleCloseInputCodeModal,
   sentSourceCode,
