@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import InputCodeModal from "../InputCodeModal";
 
@@ -19,6 +19,34 @@ export default function ChatFooter({ handleAddChatFromMe, handleAddCodeFromMe })
 
   const [message, setMessage] = useState("");
   const [codeActive, setCodeActive] = useState(false);
+
+  const inputFile = useRef();
+  const inputImage = useRef();
+  
+  function getBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  }
+
+  const handleUploadImage = (e) =>{
+    const files = e.target.files;
+    if (!files.length) return;
+    getBase64(files[0])
+    .then((data) => console.log(data))
+    .catch((err) => console.log(err))
+  };
+
+  const handleUploadFile = (e) =>{
+    console.log(e.target.value);
+    if (e.target.files[0] > 1048576 * 25) {
+      alert("Please input file < 25 MB");
+      e.target.value = "";
+    }
+  };
 
   const handleInputOnChange = (e) => {
     setMessage(e.target.value);
@@ -85,6 +113,7 @@ export default function ChatFooter({ handleAddChatFromMe, handleAddCodeFromMe })
           />
           <div className="absolute right-0 items-center inset-y-0 hidden sm:flex">
             <button
+              onClick={() => inputFile.current.click()}
               type="button"
               className="inline-flex items-center justify-center rounded-full h-[40px] w-[40px] transition duration-500 ease-in-out text-gray-300 hover:bg-gray-300 focus:outline-none"
             >
@@ -103,7 +132,11 @@ export default function ChatFooter({ handleAddChatFromMe, handleAddCodeFromMe })
                 ></path>
               </svg>
             </button>
+
+            <input id="file-input" ref={inputFile} type="file" className="hidden" onChange={handleUploadFile}/>
+
             <button
+              onClick={() => inputImage.current.click()}
               type="button"
               className="inline-flex items-center justify-center rounded-full h-[40px] w-[40px] transition duration-500 ease-in-out text-gray-300 hover:bg-gray-300 focus:outline-none"
             >
@@ -128,6 +161,9 @@ export default function ChatFooter({ handleAddChatFromMe, handleAddCodeFromMe })
                 ></path>
               </svg>
             </button>
+
+            <input id="file-input" ref={inputImage} type="file" className="hidden" accept="image/*" onChange={handleUploadImage}/>
+
             <button
               type="button"
               className="inline-flex items-center justify-center rounded-full h-[40px] w-[40px] transition duration-500 ease-in-out text-gray-300 hover:bg-gray-300 focus:outline-none"
@@ -164,7 +200,12 @@ export default function ChatFooter({ handleAddChatFromMe, handleAddCodeFromMe })
           </div>
         </div>
       </div>
-      <InputCodeModal handleAddCodeFromMe={handleAddCodeFromMe} handleOpenInputCodeModal={handleOpenInputCodeModal} showInputCodeModal={showInputCodeModal} handleCloseInputCodeModal={handleCloseInputCodeModal}/>
+      <InputCodeModal
+        handleAddCodeFromMe={handleAddCodeFromMe}
+        handleOpenInputCodeModal={handleOpenInputCodeModal}
+        showInputCodeModal={showInputCodeModal}
+        handleCloseInputCodeModal={handleCloseInputCodeModal}
+      />
     </>
   );
 }
