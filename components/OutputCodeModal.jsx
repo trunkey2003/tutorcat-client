@@ -253,15 +253,19 @@ export default function OutputCodeModal({
                 {sendable ? (
                   <div className="relative mr-auto">
                     <button
-                      onClick={() =>
+                      onClick={() => {
                         handleAddCodeFromMe({
-                          sourceCode: sourceCode,
-                          input: inputCode,
-                          output: outputCode,
-                          time: timeCode,
-                          memory: memoryCodeOutput,
-                        })
-                      }
+                          sentSourceCode: sourceCode,
+                          sentInputCode: inputCode,
+                          sentOutputCode: outputCode,
+                          sentLanguage: language,
+                          sentTimeCode: timeCode,
+                          sentMemoryCode: memoryCode,
+                          sentWarning: warning,
+                          sentInvalidCode: invalidCode,
+                        });
+                        handleCloseInputCodeModal();
+                      }}
                       className="hover-span text-white bg-sky-600 w-8 h-8 flex items-center justify-center rounded hover:bg-opacity-70"
                     >
                       <svg
